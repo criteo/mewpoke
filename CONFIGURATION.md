@@ -21,7 +21,13 @@ Mewpoke get all infos from his configuration's file ```config.yml```
  -- *host*: hostname
 
 ## service
-- `type`: metric requested (only COUCHBASE_STATS available now)
+- `type`:
+
+| Service | Metrics provided |
+| ------ | ------ |
+| COUCHBASE_STATS | Couchbase metrics from API: ([buckets by node](https://developer.couchbase.com/documentation/server/3.x/admin/REST/rest-bucket-stats.html) and [XDCR stats](https://developer.couchbase.com/documentation/server/3.x/admin/REST/rest-xdcr-statistics.html)) |
+| COUCHBASE | return metrics Latency to persist Data on disk and process up |
+| MEMCACHED | return metrics Lateny on buckets by node|
 - `timeoutInSec`: timeout for service requests
 - `username`: Couchbase username
 - `password`: Couchbase password

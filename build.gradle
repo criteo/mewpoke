@@ -1,5 +1,21 @@
+// In order to get maven shade equivalent plugin (Uber Jar)
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
+    }
+}
+
+plugins {
+  id 'org.ajoberstar.grgit' version '2.1.0'                                                                                                       
+}
+
 group 'com.criteo.nosql'
-version '1.0-SNAPSHOT'
+version = grgit.describe()
+version version
+println "Building version: ${version}"
 
 apply plugin: 'com.github.johnrengelman.shadow'
 apply plugin: 'application'
@@ -47,15 +63,5 @@ dependencies {
 jar {
     manifest {
         attributes 'Main-Class': mainClassName
-    }
-}
-
-// In order to get maven shade equivalent plugin (Uber Jar)
-buildscript {
-    repositories {
-        jcenter()
-    }
-    dependencies {
-        classpath 'com.github.jengelman.gradle.plugins:shadow:2.0.1'
     }
 }

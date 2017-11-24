@@ -1,7 +1,7 @@
 # MEWPOKE - Hope of a mew probe
 
 <p align="center">
-  <img src="./mewpoke_logo.png" alt="logo"/>
+  <img src="https://github.com/gfediere/mewpoke-environment/blob/master/mewpoke_logo.png" alt="logo"/>
 </p>
 
 
