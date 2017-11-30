@@ -41,7 +41,6 @@ public class Consul implements IDiscovery
 
     public static boolean areServicesEquals(final Map<Service, Set<InetSocketAddress>> ori, Map<Service, Set<InetSocketAddress>> neo)
     {
-        //TODO Improve complexity of the function
         if (ori.size() != neo.size()) {
             return false;
         }

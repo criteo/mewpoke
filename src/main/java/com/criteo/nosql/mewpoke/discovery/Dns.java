@@ -12,10 +12,11 @@ import java.util.*;
 
 public class Dns implements IDiscovery {
     private static Logger logger = LoggerFactory.getLogger(Dns.class);
-    private static String host;
-    private static String username;
-    private static String password;
-    private static String clustername;
+
+    private final String host;
+    private final String username;
+    private final String password;
+    private final String clustername;
 
     public Dns(String username, String password, String host, String clusterName) {
         this.username = username;
