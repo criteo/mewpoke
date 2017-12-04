@@ -128,7 +128,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
                 }
 
                 // Check if topology has changed
-                if (Consul.areServicesEquals(services, new_services))
+                if (IDiscovery.areServicesEquals(services, new_services))
                     break;
 
                 logger.info("Topology changed, updating it");
