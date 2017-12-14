@@ -349,22 +349,15 @@ public class CouchbaseMonitor implements AutoCloseable
     @Override
     public void close()
     {
-        try
-        {
-            try { bucket.close(); } catch (Exception e) { }
-            try { client.disconnect(); } catch (Exception e) { }
-
-            // Shutdown the Couchbase environment is needed to avoid a memory leak on topology change
-            // TODO: Share ONE static environment is an issue, in particular if we improve topology change granularity
-            CouchbaseEnvironment env = couchbaseEnv.get();
-            if (env != null && couchbaseEnv.compareAndSet(env, null))
-            {
-                env.shutdown();
+        try {
+            bucket.close();
+        } catch (Exception e) {
+            logger.error("Cannot close bucket properly for {} ", serviceName, e);
             }
-        }
-        catch (Throwable e)
-        {
-            logger.error("Error when disposing couchbase client for {} ", serviceName, e);
+        try {
+            client.disconnect();
+        } catch (Exception e) {
+            logger.error("Cannot close couchbase client properly for {}", serviceName, e);
         }
     }
 }
