@@ -6,6 +6,7 @@ import com.couchbase.client.core.lang.Tuple2;
 import com.couchbase.client.core.message.config.RestApiResponse;
 import com.couchbase.client.core.message.kv.UpsertRequest;
 import com.couchbase.client.core.node.Node;
+import com.couchbase.client.core.retry.FailFastRetryStrategy;
 import com.couchbase.client.core.state.LifecycleState;
 import com.couchbase.client.java.Bucket;
 import com.couchbase.client.java.CouchbaseCluster;
@@ -127,7 +128,7 @@ public class CouchbaseMonitor implements AutoCloseable
         Bucket bucket = null;
         try
         {
-            CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().build() : e);
+            CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
             bucket = client.openBucket(service.getBucketName());
             return Optional.of(new CouchbaseMonitor(service.getBucketName(), client, bucket, timeoutInMs, username, password, bucketStats));
