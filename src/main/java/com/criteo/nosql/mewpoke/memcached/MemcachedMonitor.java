@@ -80,6 +80,12 @@ public class MemcachedMonitor implements AutoCloseable
         return (Map)client.getStats();
     }
 
+    public Map<InetSocketAddress, Map<String, String>> collectStatsItems()
+    {
+        // TODO: re-implement get stats in order to avoid creating new map each time
+        return (Map)client.getStats("items");
+    }
+
     public Map<InetSocketAddress, Long> collectGetLatencies()
     {
         final CountDownLatch blatch = client.broadcastOp((n, latch) -> {
