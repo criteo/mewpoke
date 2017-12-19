@@ -5,6 +5,7 @@ import com.criteo.nosql.mewpoke.couchbase.CouchbaseRunnerLatency;
 import com.criteo.nosql.mewpoke.couchbase.CouchbaseRunnerStats;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerLatency;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerStats;
+import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerStatsItems;
 import io.prometheus.client.exporter.HTTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -66,6 +67,7 @@ public class Main
     {
         MEMCACHED(MemcachedRunnerLatency.class),
         MEMCACHED_STATS(MemcachedRunnerStats.class),
+        MEMCACHED_SLABS(MemcachedRunnerStatsItems.class),
         COUCHBASE(CouchbaseRunnerLatency.class),
         COUCHBASE_STATS(CouchbaseRunnerStats.class);
 
