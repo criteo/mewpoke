@@ -30,9 +30,15 @@ public class MemcachedMetrics implements AutoCloseable
 
     static final Gauge STATS = Gauge.build()
                                     .name("memcached_stats")
-                                    .help("Memcached stats")
+                                    .help("get global stats")
                                     .labelNames("cluster", "bucket", "instance", "name")
                                     .create().register();
+
+    static final Gauge STATSITEMS = Gauge.build()
+                                         .name("memcached_items")
+                                         .help("Get items statistics by slab ID")
+                                         .labelNames("cluster", "bucket", "instance", "slabid", "name")
+                                         .create().register();
 
     private final String clusterName;
     private final String bucketName;
@@ -51,6 +57,18 @@ public class MemcachedMetrics implements AutoCloseable
             stats.forEach((statname, statvalue) -> {
                 Double val = Doubles.tryParse(statvalue);
                 STATS.labels(clusterName, bucketName, addr.getHostName(), statname).set(val == null ? Double.NaN : val);
+            });
+        });
+    }
+
+    public void updateStatsItems(final Map<InetSocketAddress, Map<String, String>> nodesStats)
+    {
+        nodesStats.forEach((addr, stats) -> {
+            stats.forEach((statname, statvalue) -> {
+                String slabId = statname.split(":")[1];
+                String name = statname.split(":")[2];
+                Double val = Doubles.tryParse(statvalue);
+                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabId, name).set(val == null ? Double.NaN : val);
             });
         });
     }
@@ -82,5 +100,6 @@ public class MemcachedMetrics implements AutoCloseable
         UP.clear();
         LATENCY.clear();
         STATS.clear();
+        STATSITEMS.clear();
     }
 }
