@@ -10,7 +10,7 @@ public interface IDiscovery extends AutoCloseable {
 
     Map<Service, Set<InetSocketAddress>> getServicesNodesFor();
 
-    void close();
+    default void close(){}
 
     static boolean areServicesEquals(final Map<Service, Set<InetSocketAddress>> ori, Map<Service, Set<InetSocketAddress>> neo)
     {

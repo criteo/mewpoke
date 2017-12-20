@@ -33,7 +33,7 @@ public class Dns implements IDiscovery {
             final ClusterManager clusterManager = couchbaseCluster.clusterManager(username, password);
             final List<BucketSettings> buckets = clusterManager.getBuckets();
             final JsonArray clusterNodes = clusterManager.info().raw().getArray("nodes");
-            Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>();
+            final Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>();
 
             buckets.forEach(b -> {
                 final String bucketname = b.name();
@@ -41,8 +41,8 @@ public class Dns implements IDiscovery {
                 final Set<InetSocketAddress> nodes = new HashSet<>();
 
                 clusterNodes.forEach(n -> {
-                    String ipaddr = ((JsonObject) n).getString("hostname").split(":")[0];
-                    Integer port = ((JsonObject) n).getObject("ports").getInt("direct");
+                    final String ipaddr = ((JsonObject) n).getString("hostname").split(":")[0];
+                    final Integer port = ((JsonObject) n).getObject("ports").getInt("direct");
                     logger.debug("Node {} for bucket {}", ipaddr, bucketname);
                     nodes.add(new InetSocketAddress(ipaddr, port));
                 });
@@ -59,10 +59,5 @@ public class Dns implements IDiscovery {
                 couchbaseCluster.disconnect();
             }
         }
-    }
-
-    @Override
-    public void close() {
-        return;
     }
 }
