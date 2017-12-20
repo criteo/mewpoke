@@ -13,8 +13,7 @@ import com.criteo.nosql.mewpoke.config.Config;
 import com.criteo.nosql.mewpoke.discovery.Consul;
 import com.criteo.nosql.mewpoke.discovery.Dns;
 
-public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
-{
+public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable {
 
     private final Logger logger = LoggerFactory.getLogger(CouchbaseRunnerAbstract.class);
 
@@ -25,10 +24,9 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     protected Map<Service, Set<InetSocketAddress>> services;
     protected Map<Service, Optional<CouchbaseMonitor>> monitors;
     protected Map<Service, CouchbaseMetrics> metrics;
-     long refreshConsulInMs;
+    long refreshConsulInMs;
 
-    public CouchbaseRunnerAbstract(Config cfg)
-    {
+    public CouchbaseRunnerAbstract(Config cfg) {
         this.cfg = cfg;
         this.discovery = buildDiscovery(cfg.getDiscovery());
         this.tickRate = Long.parseLong(cfg.getApp().getOrDefault("tickRateInSec", "20")) * 1000L;
@@ -42,7 +40,7 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     private IDiscovery buildDiscovery(Config.Discovery discovery) {
         Config.ConsulDiscovery consulCfg = discovery.getConsul();
         Config.StaticDiscovery staticCfg = discovery.getStaticDns();
-        if (consulCfg != null ) { //&& !consulCfg.isEmpty()
+        if (consulCfg != null) { //&& !consulCfg.isEmpty()
             logger.info("Consul configuration will be used");
             return new Consul(consulCfg.getHost(), consulCfg.getPort(),
                     consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
@@ -57,15 +55,13 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     }
 
     @Override
-    public void run()
-    {
+    public void run() {
 
         List<EVENT> evts = Arrays.asList(EVENT.UPDATE_TOPOLOGY, EVENT.WAIT, EVENT.POKE);
         EVENT evt;
         long start, stop;
 
-        for (; ; )
-        {
+        for (; ; ) {
             start = System.currentTimeMillis();
             evt = evts.get(0);
             dispatch_events(evt);
@@ -77,17 +73,14 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         }
     }
 
-    private void resheduleEvent(EVENT lastEvt, long start, long stop)
-    {
+    private void resheduleEvent(EVENT lastEvt, long start, long stop) {
         long duration = stop - start;
-        if (duration >= tickRate)
-        {
+        if (duration >= tickRate) {
             logger.warn("Operation took longer than 1 tick, please increase tick rate if you see this message too often");
         }
 
         EVENT.WAIT.nexTick = start + tickRate - 1;
-        switch (lastEvt)
-        {
+        switch (lastEvt) {
             case WAIT:
                 break;
 
@@ -101,17 +94,12 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         }
     }
 
-    public void dispatch_events(EVENT evt)
-    {
-        switch (evt)
-        {
+    public void dispatch_events(EVENT evt) {
+        switch (evt) {
             case WAIT:
-                try
-                {
+                try {
                     Thread.sleep(Math.max(evt.nexTick - System.currentTimeMillis(), 0));
-                }
-                catch (Exception e)
-                {
+                } catch (Exception e) {
                     logger.error("thread interrupted {}", e);
                 }
                 break;
@@ -120,8 +108,7 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
                 Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
 
                 // Consul down ?
-                if (new_services.isEmpty())
-                {
+                if (new_services.isEmpty()) {
                     logger.info("Discovery sent back no services to monitor. is it down ? Are you sure of your tags ?");
                     break;
                 }
@@ -138,16 +125,15 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
                 // Create new ones
                 services = new_services;
                 monitors = services.entrySet().stream()
-                                   .collect(Collectors.toMap(Map.Entry::getKey, e -> CouchbaseMonitor.fromNodes(e.getKey(), e.getValue(),
-                                                                                                                cfg.getService().getTimeoutInSec() * 1000L,
-                                                                                                                cfg.getService().getUsername(),
-                                                                                                                cfg.getService().getPassword(),
-                                                                                                                cfg.getCouchbaseStats())
-                                   ));
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> CouchbaseMonitor.fromNodes(e.getKey(), e.getValue(),
+                                cfg.getService().getTimeoutInSec() * 1000L,
+                                cfg.getService().getUsername(),
+                                cfg.getService().getPassword(),
+                                cfg.getCouchbaseStats())
+                        ));
 
                 metrics = new HashMap<>(monitors.size());
-                for (Map.Entry<Service, Optional<CouchbaseMonitor>> client : monitors.entrySet())
-                {
+                for (Map.Entry<Service, Optional<CouchbaseMonitor>> client : monitors.entrySet()) {
                     metrics.put(client.getKey(), new CouchbaseMetrics(client.getKey()));
                 }
                 break;
@@ -161,32 +147,26 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     protected abstract void poke();
 
     @Override
-    public void close() throws Exception
-    {
+    public void close() throws Exception {
         discovery.close();
         monitors.values().forEach(mo -> mo.ifPresent(m -> {
-            try
-            {
+            try {
                 m.close();
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 logger.error("Error when releasing resources", e);
             }
         }));
         metrics.values().forEach(CouchbaseMetrics::close);
     }
 
-    private enum EVENT
-    {
+    private enum EVENT {
         UPDATE_TOPOLOGY(System.currentTimeMillis()),
         WAIT(System.currentTimeMillis()),
         POKE(System.currentTimeMillis());
 
         public long nexTick;
 
-        EVENT(long nexTick)
-        {
+        EVENT(long nexTick) {
             this.nexTick = nexTick;
         }
 

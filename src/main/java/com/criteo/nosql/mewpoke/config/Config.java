@@ -15,8 +15,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  * <p>
  * TODO (r.gerard): Improve the class, add substructure for consul and services instead of Map<String,String>
  */
-public final class Config
-{
+public final class Config {
     public static final String DEFAULT_PATH = "config.yml";
 
     private Map<String, String> app;
@@ -30,31 +29,30 @@ public final class Config
         return cfg;
     }
 
-    public Service getService()
-    {
+    public Service getService() {
         return service;
     }
-    public Discovery getDiscovery()
-    {
+
+    public Discovery getDiscovery() {
         return discovery;
     }
-    public Map<String, String> getApp()
-    {
+
+    public Map<String, String> getApp() {
         return app;
     }
-    public CouchbaseStats getCouchbaseStats()
-    {
+
+    public CouchbaseStats getCouchbaseStats() {
         return couchbaseStats;
     }
 
-    public class CouchbaseStats
-    {
+    public class CouchbaseStats {
         private List<String> bucket;
         private List<String> xdcr;
 
         public List<String> getBucket() {
             return bucket;
         }
+
         public List<String> getXdcr() {
             return xdcr;
         }
@@ -87,6 +85,7 @@ public final class Config
             return tags;
         }
     }
+
     public static class StaticDiscovery {
         private String clustername;
         private String host;
@@ -112,13 +111,13 @@ public final class Config
         public ConsulDiscovery getConsul() {
             return consul;
         }
+
         public StaticDiscovery getStaticDns() {
             return staticDns;
         }
     }
 
-    public static class Service
-    {
+    public static class Service {
         private String type;
         private long timeoutInSec;
         private List<String> tags;
@@ -128,15 +127,19 @@ public final class Config
         public String getType() {
             return type;
         }
+
         public long getTimeoutInSec() {
             return timeoutInSec;
         }
+
         public List<String> getTags() {
             return tags;
         }
+
         public String getUsername() {
             return username;
         }
+
         public String getPassword() {
             return password;
         }

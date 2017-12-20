@@ -4,11 +4,9 @@ import java.util.Collections;
 
 import com.criteo.nosql.mewpoke.config.Config;
 
-public class CouchbaseRunnerStats extends CouchbaseRunnerAbstract
-{
+public class CouchbaseRunnerStats extends CouchbaseRunnerAbstract {
 
-    public CouchbaseRunnerStats(final Config cfg)
-    {
+    public CouchbaseRunnerStats(final Config cfg) {
         super(cfg);
     }
 

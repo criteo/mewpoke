@@ -13,23 +13,18 @@ import org.slf4j.LoggerFactory;
 import java.util.logging.Level;
 
 
-public class Main
-{
+public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
-    public static void main(String[] args) throws Exception
-    {
+    public static void main(String[] args) throws Exception {
         // Get the configuration
         final Config cfg;
-        try
-        {
+        try {
             final String cfgPath = args.length > 0 ? args[0] : Config.DEFAULT_PATH;
             logger.info("Loading yaml config from {}", cfgPath);
             cfg = Config.fromFile(cfgPath);
             logger.trace("Loaded configuration: {}", cfg);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             logger.error("Cannot load config file", e);
             return;
         }
@@ -49,22 +44,17 @@ public class Main
         System.setProperty("net.spy.log.LoggerImpl", "net.spy.memcached.compat.log.SunLogger");
 
         // If an unexpected exception occurs, we retry
-        for (; ; )
-        {
-            try
-            {
+        for (; ; ) {
+            try {
                 logger.info("Run {}", runnerType);
                 runner.run(cfg);
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 logger.error("An unexpected exception was thrown", e);
             }
         }
     }
 
-    private enum RUNNER
-    {
+    private enum RUNNER {
         MEMCACHED(MemcachedRunnerLatency.class),
         MEMCACHED_STATS(MemcachedRunnerStats.class),
         MEMCACHED_SLABS(MemcachedRunnerStatsItems.class),
@@ -73,19 +63,14 @@ public class Main
 
         private final Class<? extends AutoCloseable> runner;
 
-        RUNNER(Class<? extends AutoCloseable> runner)
-        {
+        RUNNER(Class<? extends AutoCloseable> runner) {
             this.runner = runner;
         }
 
-        public void run(Config cfg)
-        {
-            try (AutoCloseable r = runner.getConstructor(Config.class).newInstance(cfg))
-            {
+        public void run(Config cfg) {
+            try (AutoCloseable r = runner.getConstructor(Config.class).newInstance(cfg)) {
                 ((Runnable) r).run();
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 logger.error("Can't instantiate runner for {}", runner.getCanonicalName(), e);
             }
         }

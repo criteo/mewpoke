@@ -1,4 +1,5 @@
 package com.criteo.nosql.mewpoke.discovery;
+
 import com.couchbase.client.java.CouchbaseCluster;
 import com.couchbase.client.java.cluster.BucketSettings;
 import com.couchbase.client.java.cluster.ClusterManager;
@@ -49,13 +50,11 @@ public class Dns implements IDiscovery {
                 servicesNodes.put(srv, nodes);
             });
             return servicesNodes;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.error("Could not get Services for {}", host, e);
             return Collections.emptyMap();
-        }
-        finally {
-            if(couchbaseCluster != null) {
+        } finally {
+            if (couchbaseCluster != null) {
                 couchbaseCluster.disconnect();
             }
         }

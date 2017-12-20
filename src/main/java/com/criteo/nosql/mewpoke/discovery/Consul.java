@@ -17,8 +17,7 @@ import java.util.concurrent.TimeUnit;
 
 import static java.util.stream.Collectors.toList;
 
-public class Consul implements IDiscovery
-{
+public class Consul implements IDiscovery {
     private static final Logger logger = LoggerFactory.getLogger(Consul.class);
     private static final String MAINTENANCE_MODE = "_node_maintenance";
 
@@ -29,8 +28,7 @@ public class Consul implements IDiscovery
     private final List<String> tags;
     private final ExecutorService executor;
 
-    public Consul(final String host, final int port, final int timeout, final String readConsistency, final List<String> tags)
-    {
+    public Consul(final String host, final int port, final int timeout, final String readConsistency, final List<String> tags) {
         this.host = host;
         this.port = port;
         this.timeout = timeout;
@@ -40,56 +38,51 @@ public class Consul implements IDiscovery
     }
 
 
-    private static String getFromTags(final HealthService.Service service, final String prefix){
+    private static String getFromTags(final HealthService.Service service, final String prefix) {
         return service.getTags().stream()
                 .filter(tag -> tag.startsWith(prefix))
                 .map(tag -> tag.substring(prefix.length()))
                 .findFirst().orElse("NotDefined");
     }
 
-    public static String getClusterName(final HealthService.Service service)
-    {
+    public static String getClusterName(final HealthService.Service service) {
         return getFromTags(service, "cluster=");
     }
 
-    public static String getBucketName(final HealthService.Service service)
-    {
+    public static String getBucketName(final HealthService.Service service) {
         return getFromTags(service, "bucket=");
     }
 
-    private Map<Service, Set<InetSocketAddress>> getServicesNodesForImpl(List<String> tags)
-    {
+    private Map<Service, Set<InetSocketAddress>> getServicesNodesForImpl(List<String> tags) {
         ConsulClient client = new ConsulClient(host, port);
-        final String[] platformSuffixes = new String[] {"-eu", "-us", "-as"};
+        final String[] platformSuffixes = new String[]{"-eu", "-us", "-as"};
 
         List<Map.Entry<String, List<String>>> services =
-        client.getCatalogServices(params).getValue().entrySet().stream()
-              .filter(entry -> !Collections.disjoint(entry.getValue(), tags)
-                               && Arrays.stream(platformSuffixes).noneMatch(suffix -> entry.getKey().toLowerCase().endsWith(suffix)))
-              .map(entry -> {
-                  logger.info("Found service matching {}", entry.getKey());
-                  return entry;
-              })
-              .collect(toList());
+                client.getCatalogServices(params).getValue().entrySet().stream()
+                        .filter(entry -> !Collections.disjoint(entry.getValue(), tags)
+                                && Arrays.stream(platformSuffixes).noneMatch(suffix -> entry.getKey().toLowerCase().endsWith(suffix)))
+                        .map(entry -> {
+                            logger.info("Found service matching {}", entry.getKey());
+                            return entry;
+                        })
+                        .collect(toList());
 
         Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>(services.size());
-        for (Map.Entry<String, List<String>> service : services)
-        {
+        for (Map.Entry<String, List<String>> service : services) {
             final Set<InetSocketAddress> nodes = new HashSet<>();
-            final Service[] srv = new Service[] { null };
+            final Service[] srv = new Service[]{null};
             client.getHealthServices(service.getKey(), false, params).getValue().stream()
-                  .filter(hsrv -> hsrv.getChecks().stream()
-                                    .noneMatch(check -> check.getCheckId().equalsIgnoreCase(MAINTENANCE_MODE)
-                                                        || check.getOutput().startsWith("DISCARD:") // For couchbase, flaky but don't have better, come propose me better
-                                                        || (check.getCheckId().startsWith("service:couchbase") && check.getOutput().isEmpty())
-                                    ))
-                  .forEach(hsrv -> {
-                      logger.debug("{}", hsrv.getNode());
-                      nodes.add(new InetSocketAddress(hsrv.getNode().getAddress(), hsrv.getService().getPort()));
-                      srv[0] = new Service(Consul.getClusterName(hsrv.getService()), Consul.getBucketName(hsrv.getService()));
-                  });
-            if (nodes.size() > 0)
-            {
+                    .filter(hsrv -> hsrv.getChecks().stream()
+                            .noneMatch(check -> check.getCheckId().equalsIgnoreCase(MAINTENANCE_MODE)
+                                    || check.getOutput().startsWith("DISCARD:") // For couchbase, flaky but don't have better, come propose me better
+                                    || (check.getCheckId().startsWith("service:couchbase") && check.getOutput().isEmpty())
+                            ))
+                    .forEach(hsrv -> {
+                        logger.debug("{}", hsrv.getNode());
+                        nodes.add(new InetSocketAddress(hsrv.getNode().getAddress(), hsrv.getService().getPort()));
+                        srv[0] = new Service(Consul.getClusterName(hsrv.getService()), Consul.getBucketName(hsrv.getService()));
+                    });
+            if (nodes.size() > 0) {
                 servicesNodes.put(srv[0], nodes);
             }
         }
@@ -107,11 +100,9 @@ public class Consul implements IDiscovery
      * is created each time.
      */
     @Override
-    public Map<Service, Set<InetSocketAddress>> getServicesNodesFor()
-    {
+    public Map<Service, Set<InetSocketAddress>> getServicesNodesFor() {
         Future<Map<Service, Set<InetSocketAddress>>> fServices = null;
-        try
-        {
+        try {
             fServices = executor.submit(() -> {
                 logger.info("Fetching services for tag {} ", tags);
                 long start = System.currentTimeMillis();
@@ -123,13 +114,10 @@ public class Consul implements IDiscovery
                 return services;
             });
             return fServices.get(timeout, TimeUnit.SECONDS);
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             logger.error("Cannot fetch nodes for tag {}", tags, e);
 
-            if (fServices != null)
-            {
+            if (fServices != null) {
                 fServices.cancel(true);
             }
             return Collections.emptyMap();
@@ -137,8 +125,7 @@ public class Consul implements IDiscovery
     }
 
     @Override
-    public void close()
-    {
+    public void close() {
         executor.shutdownNow();
     }
 }

@@ -7,8 +7,7 @@ import io.prometheus.client.Summary;
 import java.net.InetSocketAddress;
 import java.util.Map;
 
-public class CouchbaseMetrics implements AutoCloseable
-{
+public class CouchbaseMetrics implements AutoCloseable {
 
     static final Gauge UP = Gauge.build()
             .name("couchbase_up")
@@ -55,32 +54,27 @@ public class CouchbaseMetrics implements AutoCloseable
     private final String bucketName;
 
 
-    public CouchbaseMetrics(final Service service)
-    {
+    public CouchbaseMetrics(final Service service) {
         this.clusterName = service.getClusterName();
         this.bucketName = service.getBucketName().replace('.', '_');
     }
 
-    public void updateRebalanceOps(final boolean rebalanceOngoing)
-    {
+    public void updateRebalanceOps(final boolean rebalanceOngoing) {
         OPERATIONS.labels(clusterName, "rebalance").set(rebalanceOngoing ? 1 : 0);
     }
 
-    public void updateAvailability(final Map<InetSocketAddress, Boolean> stats)
-    {
+    public void updateAvailability(final Map<InetSocketAddress, Boolean> stats) {
         stats.forEach((statname, statvalue) -> {
             UP.labels(clusterName, bucketName, statname.getHostName()).set(statvalue ? 1 : 0);
         });
     }
 
-    public void updateMembership(final Map<InetSocketAddress, String> memberships)
-    {
+    public void updateMembership(final Map<InetSocketAddress, String> memberships) {
         MEMBERSHIP.labels(clusterName, "active").set(memberships.values().stream().filter(v -> v.startsWith("active")).count());
         MEMBERSHIP.labels(clusterName, "inactive").set(memberships.values().stream().filter(v -> !v.startsWith("active")).count());
     }
 
-    public void updateDiskLatency(final Map<InetSocketAddress, Long> latencies)
-    {
+    public void updateDiskLatency(final Map<InetSocketAddress, Long> latencies) {
         latencies.forEach((statname, latency) -> {
             LATENCY.labels(clusterName, bucketName, statname.getHostName(), "persistToDisk").observe(latency);
         });
@@ -95,16 +89,15 @@ public class CouchbaseMetrics implements AutoCloseable
     }
 
     public void updatecollectApiStatsBucketXdcr(final Map<String, Map<String, Double>> nodesXdcrStats) {
-        nodesXdcrStats.forEach((remotecluster, stats)-> {
-            stats.forEach((statname, statvalue)-> {
+        nodesXdcrStats.forEach((remotecluster, stats) -> {
+            stats.forEach((statname, statvalue) -> {
                 XDCR.labels(clusterName, bucketName, remotecluster, statname).set(statvalue);
             });
         });
     }
 
     @Override
-    public void close()
-    {
+    public void close() {
         UP.clear();
         LATENCY.clear();
         OPERATIONS.clear();

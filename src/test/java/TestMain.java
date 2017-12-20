@@ -62,7 +62,7 @@ public class TestMain {
         CopyOnWriteArrayList<Node> nodes = (CopyOnWriteArrayList<Node>) nodesF.get(r);
         SortedSet<String> seenNodes = new TreeSet<>();
 
-        for(int i = 0;  i < 300; i++) {
+        for (int i = 0; i < 300; i++) {
             Document doc = JsonDocument.create("mewpoke_" + i, null, -1);
             Tuple2<Observable<Document>, UpsertRequest> ret = bucket.async().upsertWithRequest(doc, PersistTo.MASTER, ReplicateTo.NONE);
             long start = System.currentTimeMillis();

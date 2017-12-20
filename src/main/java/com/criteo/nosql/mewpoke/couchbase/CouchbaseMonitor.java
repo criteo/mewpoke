@@ -39,8 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 
-public class CouchbaseMonitor implements AutoCloseable
-{
+public class CouchbaseMonitor implements AutoCloseable {
     private static Logger logger = LoggerFactory.getLogger(CouchbaseMonitor.class);
     private static AtomicReference<CouchbaseEnvironment> couchbaseEnv = new AtomicReference<>(null);
     private final String serviceName;
@@ -69,8 +68,7 @@ public class CouchbaseMonitor implements AutoCloseable
     private final NodeLocatorHelper locator;
     private final ClusterManager clusterManager;
 
-    private CouchbaseMonitor(String serviceName, CouchbaseCluster client, Bucket bucket, long timeoutInMs, String username, String password, Config.CouchbaseStats couchbasestats) throws NoSuchFieldException, IllegalAccessException
-    {
+    private CouchbaseMonitor(String serviceName, CouchbaseCluster client, Bucket bucket, long timeoutInMs, String username, String password, Config.CouchbaseStats couchbasestats) throws NoSuchFieldException, IllegalAccessException {
         this.serviceName = serviceName;
         this.client = client;
         this.bucket = bucket;
@@ -100,41 +98,34 @@ public class CouchbaseMonitor implements AutoCloseable
         // Generate requests that will spread on every nodes
         this.locator = NodeLocatorHelper.create(bucket);
         final Map<InetAddress, String> keysHolder = new HashMap<>(locator.nodes().size());
-        for (int i = 0; keysHolder.size() < locator.nodes().size() && i < 2000; i++)
-        {
+        for (int i = 0; keysHolder.size() < locator.nodes().size() && i < 2000; i++) {
             final String key = "mewpoke_" + i;
             keysHolder.put(locator.activeNodeForId(key), key);
         }
 
         this.docs = new ArrayList<>(keysHolder.size());
-        for (String key : keysHolder.values())
-        {
+        for (String key : keysHolder.values()) {
             this.docs.add(JsonDocument.create(key, null, -1));
         }
     }
 
-    private static InetSocketAddress nodeToInetAddress(Node n)
-    {
+    private static InetSocketAddress nodeToInetAddress(Node n) {
         return new InetSocketAddress(n.hostname().hostname(), 8091);
     }
 
-    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs, String username, String password, Config.CouchbaseStats bucketStats)
-    {
+    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs, String username, String password, Config.CouchbaseStats bucketStats) {
         if (endPoints.isEmpty()) {
             return Optional.empty();
         }
 
         CouchbaseCluster client = null;
         Bucket bucket = null;
-        try
-        {
+        try {
             CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
             bucket = client.openBucket(service.getBucketName());
             return Optional.of(new CouchbaseMonitor(service.getBucketName(), client, bucket, timeoutInMs, username, password, bucketStats));
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             logger.error("Cannot create couchbase client for {}", service.getBucketName(), e);
             if (client != null) client.disconnect();
             if (bucket != null) bucket.close();
@@ -142,35 +133,25 @@ public class CouchbaseMonitor implements AutoCloseable
         }
     }
 
-    private CopyOnWriteArrayList<Node> getNodes()
-    {
-        try
-        {
+    private CopyOnWriteArrayList<Node> getNodes() {
+        try {
             return (CopyOnWriteArrayList<Node>) nodesGetter.get(requestHandler);
-        }
-        catch (IllegalAccessException e)
-        {
+        } catch (IllegalAccessException e) {
             return new CopyOnWriteArrayList<>();
         }
     }
 
-    public boolean collectRebalanceOps()
-    {
-        try
-        {
+    public boolean collectRebalanceOps() {
+        try {
             return this.clusterManager.info().raw().getString("rebalanceStatus").equalsIgnoreCase("running");
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             logger.error("Got an invalid JSON from the couchbase API for {} on rebalanceOps", serviceName, e);
             return false;
         }
     }
 
-    public Map<InetSocketAddress, String> collectMembership()
-    {
-        try
-        {
+    public Map<InetSocketAddress, String> collectMembership() {
+        try {
             final JsonArray clusterNodesStats = this.clusterManager.info().raw().getArray("nodes");
             clusterNodesStats.forEach(n -> {
                 JsonObject node = ((JsonObject) n);
@@ -179,9 +160,7 @@ public class CouchbaseMonitor implements AutoCloseable
             });
 
             return nodesMembershipFrozen;
-        }
-        catch (Exception e)
-        {
+        } catch (Exception e) {
             logger.error("Got an invalid JSON from the couchbase API for {} on membership", serviceName, e);
             return Collections.emptyMap();
         }
@@ -190,7 +169,7 @@ public class CouchbaseMonitor implements AutoCloseable
     public Map<InetSocketAddress, Map<String, Double>> collectApiStatsBucket() {
         final ClusterApiClient api = this.clusterManager.apiClient();
 
-        for(Node n: getNodes()) {
+        for (Node n : getNodes()) {
             final String ipaddr = nodeToInetAddress(n).toString().split("/")[1];
             final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -198,7 +177,7 @@ public class CouchbaseMonitor implements AutoCloseable
             final JsonNode jsonBucketStatsNode;
             try {
                 final RestApiResponse BucketStatsNode = api.get(uri).execute();
-                if(BucketStatsNode.httpStatus().code() != 200) {
+                if (BucketStatsNode.httpStatus().code() != 200) {
                     logger.error("uri {} does not return 200", uri);
                     continue;
                 }
@@ -218,14 +197,14 @@ public class CouchbaseMonitor implements AutoCloseable
                     double value = hot_key.get("ops").asDouble();
                     MapStr.put(key, value);
                 } catch (Exception e) {
-                    logger.error("Cannot find a metric convertible to double value for {}, stat {}", ipaddr, key , e);
+                    logger.error("Cannot find a metric convertible to double value for {}, stat {}", ipaddr, key, e);
                 }
             }
             if (couchbasestats.getBucket() == null) {
                 Iterator<Map.Entry<String, JsonNode>> Iterator = jsonBucketStatsNode.get("op").get("samples").fields();
                 while (Iterator.hasNext()) {
                     Map.Entry<String, JsonNode> field = Iterator.next();
-                    try{
+                    try {
                         final double value = field.getValue().get(0).asDouble();
                     } catch (Exception e) {
                         logger.error("Cannot find a metric convertible to double value for {}, stat {}", ipaddr, field.getKey(), e);
@@ -298,7 +277,7 @@ public class CouchbaseMonitor implements AutoCloseable
                         final double value = field.getValue().get(0).asDouble();
                         mapStats.put(field.getKey().substring(field.getKey().lastIndexOf('/') + 1), value);
                     } catch (Exception e) {
-                        logger.error("Cannot find an XDCR metric convertible to double value for bucket {}, stat {}", srcBucketName, field.getKey() , e);
+                        logger.error("Cannot find an XDCR metric convertible to double value for bucket {}, stat {}", srcBucketName, field.getKey(), e);
                     }
                 }
             } else {
@@ -316,45 +295,42 @@ public class CouchbaseMonitor implements AutoCloseable
         return xdcrStatsFrozen;
     }
 
-    public Map<InetSocketAddress, Boolean> collectAvailability()
-    {
+    public Map<InetSocketAddress, Boolean> collectAvailability() {
         for (Node n : getNodes()) {
             availability.put(nodeToInetAddress(n), n.state() == LifecycleState.CONNECTED);
         }
         return availabilityFrozen;
     }
 
-    public Map<InetSocketAddress, Long> collectPersistToDiskLatencies()
-    {
+    public Map<InetSocketAddress, Long> collectPersistToDiskLatencies() {
         Observable
-        .from(docs)
-        .flatMap(doc -> {
-            long start = System.nanoTime();
-            Tuple2<Observable<Document>, UpsertRequest> ret = bucket.async().upsertWithRequest(doc, PersistTo.MASTER, ReplicateTo.NONE);
-            return ret.value1()
-                      .timeout(timeoutInMs, TimeUnit.MILLISECONDS)
-                      .onErrorReturn(e -> null)
-                      .doOnError(e -> setLatencies.put(nodeToInetAddress(ret.value2().node), timeoutInMs))
-                      .doOnCompleted(() -> {
-                          long stop = System.nanoTime();
-                          setLatencies.put(nodeToInetAddress(ret.value2().node), (stop - start) / 1000L);
-                      });
-        })
-        .last()
-        .toBlocking()
-        .firstOrDefault(null);
+                .from(docs)
+                .flatMap(doc -> {
+                    long start = System.nanoTime();
+                    Tuple2<Observable<Document>, UpsertRequest> ret = bucket.async().upsertWithRequest(doc, PersistTo.MASTER, ReplicateTo.NONE);
+                    return ret.value1()
+                            .timeout(timeoutInMs, TimeUnit.MILLISECONDS)
+                            .onErrorReturn(e -> null)
+                            .doOnError(e -> setLatencies.put(nodeToInetAddress(ret.value2().node), timeoutInMs))
+                            .doOnCompleted(() -> {
+                                long stop = System.nanoTime();
+                                setLatencies.put(nodeToInetAddress(ret.value2().node), (stop - start) / 1000L);
+                            });
+                })
+                .last()
+                .toBlocking()
+                .firstOrDefault(null);
 
         return setLatenciesFrozen;
     }
 
     @Override
-    public void close()
-    {
+    public void close() {
         try {
             bucket.close();
         } catch (Exception e) {
             logger.error("Cannot close bucket properly for {} ", serviceName, e);
-            }
+        }
         try {
             client.disconnect();
         } catch (Exception e) {

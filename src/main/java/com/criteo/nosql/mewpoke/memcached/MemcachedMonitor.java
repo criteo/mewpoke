@@ -17,8 +17,7 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-public class MemcachedMonitor implements AutoCloseable
-{
+public class MemcachedMonitor implements AutoCloseable {
     private static final String cacheKey = "mempoke_NoSQL";
     private static final int ttlInMs = 60 * 60 * 24 * 15; // should not exceed one month (60*60*24*30)
     private static Logger logger = LoggerFactory.getLogger(MemcachedMonitor.class);
@@ -35,8 +34,7 @@ public class MemcachedMonitor implements AutoCloseable
     private final Map<InetSocketAddress, Long> getLatenciesFrozen;
     private final CachedData data;
 
-    private MemcachedMonitor(final String serviceName, final MemcachedClient client, final long timeoutInMs)
-    {
+    private MemcachedMonitor(final String serviceName, final MemcachedClient client, final long timeoutInMs) {
         this.serviceName = serviceName;
         this.client = client;
         this.opF = new BinaryOperationFactory();
@@ -48,14 +46,12 @@ public class MemcachedMonitor implements AutoCloseable
         this.timeoutInMs = timeoutInMs;
     }
 
-    public static Optional<MemcachedMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs)
-    {
+    public static Optional<MemcachedMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs) {
         if (endPoints.isEmpty()) {
             return Optional.empty();
         }
 
-        try
-        {
+        try {
             // Create a client based on the binary protocol and drop pending query upon node failure
             final MemcachedClient client = new MemcachedClient(new ConnectionFactoryBuilder(new BinaryConnectionFactory())
                     .setFailureMode(FailureMode.Cancel)
@@ -64,9 +60,7 @@ public class MemcachedMonitor implements AutoCloseable
                     .build()
                     , new ArrayList<>(endPoints));
             return Optional.of(new MemcachedMonitor(service.getBucketName(), client, timeoutInMs));
-        }
-        catch (IOException e)
-        {
+        } catch (IOException e) {
             logger.error("Cannot create memcached client", e);
             return Optional.empty();
         }
@@ -74,40 +68,33 @@ public class MemcachedMonitor implements AutoCloseable
 
     // Memcached driver uses an InetSocketAddress behind the scene, so we cheat on java compiler...
     @SuppressWarnings("unchecked")
-    public Map<InetSocketAddress, Map<String, String>> collectStats()
-    {
+    public Map<InetSocketAddress, Map<String, String>> collectStats() {
         // TODO: re-implement get stats in order to avoid creating new map each time
-        return (Map)client.getStats();
+        return (Map) client.getStats();
     }
 
-    public Map<InetSocketAddress, Map<String, String>> collectStatsItems()
-    {
+    public Map<InetSocketAddress, Map<String, String>> collectStatsItems() {
         // TODO: re-implement get stats in order to avoid creating new map each time
-        return (Map)client.getStats("items");
+        return (Map) client.getStats("items");
     }
 
-    public Map<InetSocketAddress, Long> collectGetLatencies()
-    {
+    public Map<InetSocketAddress, Long> collectGetLatencies() {
         final CountDownLatch blatch = client.broadcastOp((n, latch) -> {
             final InetSocketAddress sa = (InetSocketAddress) n.getSocketAddress();
             getLatencies.put(sa, timeoutInMs * 1000L);
 
             final long start = System.nanoTime();
-            return opF.get(cacheKey, new GetOperation.Callback()
-            {
+            return opF.get(cacheKey, new GetOperation.Callback() {
                 @Override
-                public void gotData(String key, int flags, byte[] data)
-                {
+                public void gotData(String key, int flags, byte[] data) {
                 }
 
                 @Override
-                public void receivedStatus(OperationStatus status)
-                {
+                public void receivedStatus(OperationStatus status) {
                 }
 
                 @Override
-                public void complete()
-                {
+                public void complete() {
                     final long stop = System.nanoTime();
                     getLatencies.put(sa, (stop - start) / 1000L);
                     latch.countDown();
@@ -115,43 +102,34 @@ public class MemcachedMonitor implements AutoCloseable
             });
         });
 
-        try
-        {
-            if (!blatch.await(timeoutInMs, TimeUnit.MILLISECONDS))
-            {
+        try {
+            if (!blatch.await(timeoutInMs, TimeUnit.MILLISECONDS)) {
                 logger.error("Collecting get latencies for {} failed to respond in {} ms", serviceName, timeoutInMs);
             }
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             logger.error("Collecting get latencies failed for {}, thread Interrupted", serviceName);
         }
         return getLatenciesFrozen;
     }
 
-    public Map<InetSocketAddress, Long> collectSetLatencies()
-    {
+    public Map<InetSocketAddress, Long> collectSetLatencies() {
         final CountDownLatch blatch = client.broadcastOp((n, latch) -> {
             final InetSocketAddress sa = (InetSocketAddress) n.getSocketAddress();
             setLatencies.put(sa, timeoutInMs * 1000L);
 
             final long start = System.nanoTime();
             return opF.store(StoreType.set, cacheKey, data.getFlags(), ttlInMs, data.getData(),
-                    new StoreOperation.Callback()
-                    {
+                    new StoreOperation.Callback() {
                         @Override
-                        public void gotData(String key, long cas)
-                        {
+                        public void gotData(String key, long cas) {
                         }
 
                         @Override
-                        public void receivedStatus(OperationStatus status)
-                        {
+                        public void receivedStatus(OperationStatus status) {
                         }
 
                         @Override
-                        public void complete()
-                        {
+                        public void complete() {
                             final long stop = System.nanoTime();
                             setLatencies.put(sa, (stop - start) / 1000L);
                             latch.countDown();
@@ -159,23 +137,18 @@ public class MemcachedMonitor implements AutoCloseable
                     });
         });
 
-        try
-        {
-            if (!blatch.await(timeoutInMs, TimeUnit.MILLISECONDS))
-            {
+        try {
+            if (!blatch.await(timeoutInMs, TimeUnit.MILLISECONDS)) {
                 logger.error("Collecting set latencies for {} failed to respond in {} ms", serviceName, timeoutInMs);
             }
-        }
-        catch (InterruptedException e)
-        {
+        } catch (InterruptedException e) {
             logger.error("Collecting set latencies failed for {}, thread Interrupted", serviceName);
         }
         return setLatenciesFrozen;
     }
 
     @Override
-    public void close()
-    {
+    public void close() {
         client.shutdown();
     }
 }

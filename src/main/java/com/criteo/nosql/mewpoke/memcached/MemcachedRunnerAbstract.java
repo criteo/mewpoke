@@ -13,8 +13,7 @@ import org.slf4j.LoggerFactory;
 import com.criteo.nosql.mewpoke.config.Config;
 import com.criteo.nosql.mewpoke.discovery.Consul;
 
-public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
-{
+public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable {
 
     private final Logger logger = LoggerFactory.getLogger(MemcachedRunnerAbstract.class);
 
@@ -27,8 +26,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     protected Map<Service, MemcachedMetrics> metrics;
     private long refreshConsulInMs;
 
-    public MemcachedRunnerAbstract(Config cfg)
-    {
+    public MemcachedRunnerAbstract(Config cfg) {
         this.cfg = cfg;
         this.discovery = buildDiscovery(cfg.getDiscovery());
 
@@ -43,13 +41,13 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     private IDiscovery buildDiscovery(Config.Discovery discovery) {
         Config.ConsulDiscovery consulCfg = discovery.getConsul();
         Config.StaticDiscovery staticCfg = discovery.getStaticDns();
-        if (consulCfg != null ) {
+        if (consulCfg != null) {
             logger.info("Consul configuration will be used");
             return new Consul(consulCfg.getHost(), consulCfg.getPort(),
                     consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
                     consulCfg.getTags());
         }
-        if (staticCfg != null ) {
+        if (staticCfg != null) {
             logger.info("Static configuration will be used");
             return new Dns(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
         }
@@ -58,15 +56,13 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     }
 
     @Override
-    public void run()
-    {
+    public void run() {
 
         List<EVENT> evts = Arrays.asList(EVENT.UPDATE_TOPOLOGY, EVENT.WAIT, EVENT.POKE);
         EVENT evt;
         long start, stop;
 
-        for (; ; )
-        {
+        for (; ; ) {
             start = System.currentTimeMillis();
             evt = evts.get(0);
             dispatch_events(evt);
@@ -78,17 +74,14 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         }
     }
 
-    private void resheduleEvent(EVENT lastEvt, long start, long stop)
-    {
+    private void resheduleEvent(EVENT lastEvt, long start, long stop) {
         long duration = stop - start;
-        if (duration >= tickRate)
-        {
+        if (duration >= tickRate) {
             logger.warn("Operation took longer than 1 tick, please increase tick rate if you see this message too often");
         }
 
         EVENT.WAIT.nexTick = start + tickRate - 1;
-        switch (lastEvt)
-        {
+        switch (lastEvt) {
             case WAIT:
                 break;
 
@@ -102,17 +95,12 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         }
     }
 
-    public void dispatch_events(EVENT evt)
-    {
-        switch (evt)
-        {
+    public void dispatch_events(EVENT evt) {
+        switch (evt) {
             case WAIT:
-                try
-                {
+                try {
                     Thread.sleep(Math.max(evt.nexTick - System.currentTimeMillis(), 0));
-                }
-                catch (Exception e)
-                {
+                } catch (Exception e) {
                     logger.error("thread interrupted {}", e);
                 }
                 break;
@@ -121,8 +109,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
                 Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
 
                 // Consul down ?
-                if (new_services.isEmpty())
-                {
+                if (new_services.isEmpty()) {
                     logger.info("Consul sent back no services to monitor. is it down ? Are you sure of your tags ?");
                     break;
                 }
@@ -139,13 +126,12 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
                 // Create new ones
                 services = new_services;
                 monitors = services.entrySet().stream()
-                                   .collect(Collectors.toMap(Map.Entry::getKey, e -> MemcachedMonitor.fromNodes(e.getKey(), e.getValue(),
-                                                                                                                cfg.getService().getTimeoutInSec()* 1000L)
-                                   ));
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> MemcachedMonitor.fromNodes(e.getKey(), e.getValue(),
+                                cfg.getService().getTimeoutInSec() * 1000L)
+                        ));
 
                 metrics = new HashMap<>(monitors.size());
-                for (Map.Entry<Service, Optional<MemcachedMonitor>> client : monitors.entrySet())
-                {
+                for (Map.Entry<Service, Optional<MemcachedMonitor>> client : monitors.entrySet()) {
                     metrics.put(client.getKey(), new MemcachedMetrics(client.getKey()));
                 }
                 break;
@@ -159,32 +145,26 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     abstract protected void poke();
 
     @Override
-    public void close() throws Exception
-    {
+    public void close() throws Exception {
         discovery.close();
         monitors.values().forEach(mo -> mo.ifPresent(m -> {
-            try
-            {
+            try {
                 m.close();
-            }
-            catch (Exception e)
-            {
+            } catch (Exception e) {
                 logger.error("Error when releasing resources", e);
             }
         }));
         metrics.values().forEach(MemcachedMetrics::close);
     }
 
-    private enum EVENT
-    {
+    private enum EVENT {
         UPDATE_TOPOLOGY(System.currentTimeMillis()),
         WAIT(System.currentTimeMillis()),
         POKE(System.currentTimeMillis());
 
         public long nexTick;
 
-        EVENT(long nexTick)
-        {
+        EVENT(long nexTick) {
             this.nexTick = nexTick;
         }
 

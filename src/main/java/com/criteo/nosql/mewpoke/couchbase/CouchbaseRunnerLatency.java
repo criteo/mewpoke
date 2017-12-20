@@ -6,11 +6,9 @@ import java.util.Optional;
 import com.criteo.nosql.mewpoke.config.Config;
 import com.criteo.nosql.mewpoke.discovery.Service;
 
-public class CouchbaseRunnerLatency extends CouchbaseRunnerAbstract
-{
+public class CouchbaseRunnerLatency extends CouchbaseRunnerAbstract {
 
-    public CouchbaseRunnerLatency(final Config cfg)
-    {
+    public CouchbaseRunnerLatency(final Config cfg) {
         super(cfg);
     }
 
