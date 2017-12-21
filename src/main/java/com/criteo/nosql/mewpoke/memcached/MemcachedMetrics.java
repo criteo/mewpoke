@@ -31,13 +31,13 @@ public class MemcachedMetrics implements AutoCloseable {
             .name("memcached_stats")
             .help("get global stats")
             .labelNames("cluster", "bucket", "instance", "name")
-            .create().register();
+            .register();
 
     static final Gauge STATSITEMS = Gauge.build()
             .name("memcached_items")
             .help("Get items statistics by slab ID")
             .labelNames("cluster", "bucket", "instance", "slabid", "name")
-            .create().register();
+            .register();
 
     private final String clusterName;
     private final String bucketName;
@@ -52,8 +52,9 @@ public class MemcachedMetrics implements AutoCloseable {
     public void updateStats(final Map<InetSocketAddress, Map<String, String>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
             stats.forEach((statname, statvalue) -> {
-                Double val = Doubles.tryParse(statvalue);
-                STATS.labels(clusterName, bucketName, addr.getHostName(), statname).set(val == null ? Double.NaN : val);
+                final Double val = Doubles.tryParse(statvalue);
+                STATS.labels(clusterName, bucketName, addr.getHostName(), statname)
+                        .set(val == null ? Double.NaN : val);
             });
         });
     }
@@ -61,34 +62,39 @@ public class MemcachedMetrics implements AutoCloseable {
     public void updateStatsItems(final Map<InetSocketAddress, Map<String, String>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
             stats.forEach((statname, statvalue) -> {
-                String slabId = statname.split(":")[1];
-                String name = statname.split(":")[2];
-                Double val = Doubles.tryParse(statvalue);
-                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabId, name).set(val == null ? Double.NaN : val);
+                final String slabId = statname.split(":")[1];
+                final String name = statname.split(":")[2];
+                final Double val = Doubles.tryParse(statvalue);
+                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabId, name)
+                        .set(val == null ? Double.NaN : val);
             });
         });
     }
 
     public void updateAvailability(final Map<InetSocketAddress, Map<String, String>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
-            UP.labels(clusterName, bucketName, addr.getHostName()).set(Math.min(stats.size(), 1));
+            UP.labels(clusterName, bucketName, addr.getHostName())
+                    .set(Math.min(stats.size(), 1));
         });
     }
 
     public void updateGetLatency(final Map<InetSocketAddress, Long> latencies) {
         latencies.forEach((addr, latency) -> {
-            LATENCY.labels(clusterName, bucketName, addr.getHostName(), "get").observe(latency);
+            LATENCY.labels(clusterName, bucketName, addr.getHostName(), "get")
+                    .observe(latency);
         });
     }
 
     public void updateSetLatency(final Map<InetSocketAddress, Long> latencies) {
         latencies.forEach((addr, latency) -> {
-            LATENCY.labels(clusterName, bucketName, addr.getHostName(), "set").observe(latency);
+            LATENCY.labels(clusterName, bucketName, addr.getHostName(), "set")
+                    .observe(latency);
         });
     }
 
     @Override
     public void close() {
+        // FIXME we should remove only metrics with the labels cluster=clustername, bucket=bucketName
         UP.clear();
         LATENCY.clear();
         STATS.clear();

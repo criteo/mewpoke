@@ -60,30 +60,36 @@ public class CouchbaseMetrics implements AutoCloseable {
     }
 
     public void updateRebalanceOps(final boolean rebalanceOngoing) {
-        OPERATIONS.labels(clusterName, "rebalance").set(rebalanceOngoing ? 1 : 0);
+        OPERATIONS.labels(clusterName, "rebalance")
+                .set(rebalanceOngoing ? 1 : 0);
     }
 
-    public void updateAvailability(final Map<InetSocketAddress, Boolean> stats) {
-        stats.forEach((statname, statvalue) -> {
-            UP.labels(clusterName, bucketName, statname.getHostName()).set(statvalue ? 1 : 0);
+    public void updateAvailability(final Map<InetSocketAddress, Boolean> availabilities) {
+        availabilities.forEach((addr, availability) -> {
+            UP.labels(clusterName, bucketName, addr.getHostName())
+                    .set(availability ? 1 : 0);
         });
     }
 
     public void updateMembership(final Map<InetSocketAddress, String> memberships) {
-        MEMBERSHIP.labels(clusterName, "active").set(memberships.values().stream().filter(v -> v.startsWith("active")).count());
-        MEMBERSHIP.labels(clusterName, "inactive").set(memberships.values().stream().filter(v -> !v.startsWith("active")).count());
+        MEMBERSHIP.labels(clusterName, "active")
+                .set(memberships.values().stream().filter(v -> v.startsWith("active")).count());
+        MEMBERSHIP.labels(clusterName, "inactive")
+                .set(memberships.values().stream().filter(v -> !v.startsWith("active")).count());
     }
 
     public void updateDiskLatency(final Map<InetSocketAddress, Long> latencies) {
         latencies.forEach((statname, latency) -> {
-            LATENCY.labels(clusterName, bucketName, statname.getHostName(), "persistToDisk").observe(latency);
+            LATENCY.labels(clusterName, bucketName, statname.getHostName(), "persistToDisk")
+                    .observe(latency);
         });
     }
 
     public void updatecollectApiStatsBucket(final Map<InetSocketAddress, Map<String, Double>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
             stats.forEach((statname, statvalue) -> {
-                STATS.labels(clusterName, bucketName, addr.getHostName(), statname).set(statvalue);
+                STATS.labels(clusterName, bucketName, addr.getHostName(), statname)
+                        .set(statvalue);
             });
         });
     }
@@ -91,13 +97,15 @@ public class CouchbaseMetrics implements AutoCloseable {
     public void updatecollectApiStatsBucketXdcr(final Map<String, Map<String, Double>> nodesXdcrStats) {
         nodesXdcrStats.forEach((remotecluster, stats) -> {
             stats.forEach((statname, statvalue) -> {
-                XDCR.labels(clusterName, bucketName, remotecluster, statname).set(statvalue);
+                XDCR.labels(clusterName, bucketName, remotecluster, statname)
+                        .set(statvalue);
             });
         });
     }
 
     @Override
     public void close() {
+        // FIXME we should remove only metrics with the labels cluster=clustername, bucket=bucketName
         UP.clear();
         LATENCY.clear();
         OPERATIONS.clear();
