@@ -30,9 +30,10 @@ public class Main {
         }
 
         // Start an http server to allow Prometheus scrapping
+        // daemon=true, so if the scheduler is stopped, the JVM does not wait for http server termination
         final int httpServerPort = Integer.parseInt(cfg.getApp().getOrDefault("httpServerPort", "8080"));
         logger.info("Starting an http server on port {}", httpServerPort);
-        final HTTPServer server = new HTTPServer(httpServerPort);
+        final HTTPServer server = new HTTPServer(httpServerPort, true);
 
         // Get the runner depending on the configuration
         final String runnerType = cfg.getService().getType();
