@@ -102,7 +102,7 @@ public final class Config {
     public static class Discovery {
         private ConsulDiscovery consul;
         private StaticDiscovery staticDns;
-        private Long refreshEveryMin;
+        private Long refreshEveryMin; // FIXME. keep it a while for compat
 
         public Long getRefreshEveryMin() {
             return refreshEveryMin;

@@ -17,20 +17,21 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
     private final Logger logger = LoggerFactory.getLogger(CouchbaseRunnerAbstract.class);
 
-    protected final Config cfg;
-    protected final long tickRate;
+    private final Config cfg;
     private final IDiscovery discovery;
+    private final long measurementPeriodInMs;
+    private final long refreshDiscoveryPeriodInMs;
 
     protected Map<Service, Set<InetSocketAddress>> services;
     protected Map<Service, Optional<CouchbaseMonitor>> monitors;
     protected Map<Service, CouchbaseMetrics> metrics;
-    long refreshConsulInMs;
 
     public CouchbaseRunnerAbstract(Config cfg) {
         this.cfg = cfg;
         this.discovery = buildDiscovery(cfg.getDiscovery());
-        this.tickRate = Long.parseLong(cfg.getApp().getOrDefault("tickRateInSec", "20")) * 1000L;
-        this.refreshConsulInMs = cfg.getDiscovery().getRefreshEveryMin() * 60 * 1000L;
+        this.measurementPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("measurementPeriodInMs", "20")) * 1000L;
+        this.refreshDiscoveryPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("refreshDiscoveryPeriodInMs", "60")) * 1000L;
+
         this.monitors = Collections.emptyMap();
         this.metrics = Collections.emptyMap();
         this.services = Collections.emptyMap();
@@ -40,18 +41,18 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     private IDiscovery buildDiscovery(Config.Discovery discovery) {
         Config.ConsulDiscovery consulCfg = discovery.getConsul();
         Config.StaticDiscovery staticCfg = discovery.getStaticDns();
-        if (consulCfg != null) { //&& !consulCfg.isEmpty()
-            logger.info("Consul configuration will be used");
+        if (consulCfg != null) {
+            logger.info("Consul discovery will be used");
             return new ConsulDiscovery(consulCfg.getHost(), consulCfg.getPort(),
                     consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
                     consulCfg.getTags());
         }
         if (staticCfg != null) {
-            logger.info("Static configuration will be used");
+            logger.info("Static Couchbase discovery will be used");
             return new CouchbaseDiscovery(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
         }
         logger.error("Bad configuration, no discovery provided");
-        throw new RuntimeException("Bad configuration, no discovery provided"); //TODO: Should break the main loop here
+        throw new IllegalArgumentException("Bad configuration, no discovery was provided"); //TODO: Should break the main loop
     }
 
     @Override
@@ -75,21 +76,21 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
     private void resheduleEvent(EVENT lastEvt, long start, long stop) {
         long duration = stop - start;
-        if (duration >= tickRate) {
+        if (duration >= measurementPeriodInMs) {
             logger.warn("Operation took longer than 1 tick, please increase tick rate if you see this message too often");
         }
 
-        EVENT.WAIT.nexTick = start + tickRate - 1;
+        EVENT.WAIT.nexTick = start + measurementPeriodInMs - 1;
         switch (lastEvt) {
             case WAIT:
                 break;
 
             case UPDATE_TOPOLOGY:
-                lastEvt.nexTick = start + refreshConsulInMs;
+                lastEvt.nexTick = start + refreshDiscoveryPeriodInMs;
                 break;
 
             case POKE:
-                lastEvt.nexTick = start + tickRate;
+                lastEvt.nexTick = start + measurementPeriodInMs;
                 break;
         }
     }

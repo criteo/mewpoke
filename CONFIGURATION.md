@@ -5,11 +5,11 @@ Mewpoke get all infos from his configuration's file ```config.yml```
 # Sections
 
 ## app
-- `tickRateInSec`: time between metrics refresh
+- `measurementPeriodInSec`: time between metrics refresh
+- `refreshDiscoveryPeriodInSec`: time between discovery refresh
 - `httpServerPort`: port used to expose metrics
 
 ## discovery
-- `refreshEveryMin`: time between discovery refresh
 - `consul`: use consul as endpoint for discovery
  -- *host*: consul endpoint targeted
  -- *port*: consul port
