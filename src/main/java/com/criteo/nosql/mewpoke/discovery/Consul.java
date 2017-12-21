@@ -17,6 +17,9 @@ import java.util.concurrent.TimeUnit;
 
 import static java.util.stream.Collectors.toList;
 
+/**
+ * Provide a discovery based on Consul.
+ */
 public class Consul implements IDiscovery {
     private static final Logger logger = LoggerFactory.getLogger(Consul.class);
     private static final String MAINTENANCE_MODE = "_node_maintenance";
@@ -91,14 +94,14 @@ public class Consul implements IDiscovery {
     }
 
     /**
-     * Entry point of the class, that fetch all services with associated nodes matching the given tag
+     * Look in Consul for all services matching one of the tags
      * The function filter out nodes that are in maintenance mode
-     *
-     * @return All this mumbo-jumbo with the executor is done only because the consul client does not expose
-     * in any way a mean to timeout/cancel requests nor to properly shutdown/reset it.
-     * Thus we play safe and wrap calls inside an executor that we can properly timeout, and a new consul client
-     * is created each time.
+     * @return the map nodes by services
      */
+    // All this mumbo-jumbo with the executor is done only because the consul client does not expose
+    // in any way a mean to timeout/cancel requests nor to properly shutdown/reset it.
+    // Thus we play safe and wrap calls inside an executor that we can properly timeout, and a new consul client
+    // is created each time.
     @Override
     public Map<Service, Set<InetSocketAddress>> getServicesNodesFor() {
         Future<Map<Service, Set<InetSocketAddress>>> fServices = null;

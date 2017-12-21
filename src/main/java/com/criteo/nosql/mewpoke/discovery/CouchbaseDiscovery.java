@@ -11,21 +11,29 @@ import org.slf4j.LoggerFactory;
 import java.net.InetSocketAddress;
 import java.util.*;
 
-public class Dns implements IDiscovery {
-    private static Logger logger = LoggerFactory.getLogger(Dns.class);
+/**
+ * Provides a discovery based on Couchbase. One couchbase node must be provided,
+ * buckets and other couchbase nodes are discovered automatically.
+ */
+public class CouchbaseDiscovery implements IDiscovery {
+    private static Logger logger = LoggerFactory.getLogger(CouchbaseDiscovery.class);
 
     private final String host;
     private final String username;
     private final String password;
     private final String clustername;
 
-    public Dns(String username, String password, String host, String clusterName) {
+    public CouchbaseDiscovery(String username, String password, String host, String clusterName) {
         this.username = username;
         this.password = password;
         this.host = host;
         this.clustername = clusterName;
     }
 
+    /**
+     * Create one service per bucket, for each service we list all known couchbase nodes
+     * @return the map nodes by services
+     */
     @Override
     public Map<Service, Set<InetSocketAddress>> getServicesNodesFor() {
         CouchbaseCluster couchbaseCluster = null;

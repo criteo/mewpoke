@@ -4,7 +4,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import com.criteo.nosql.mewpoke.discovery.Dns;
+import com.criteo.nosql.mewpoke.discovery.CouchbaseDiscovery;
 import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.discovery.Service;
 import org.slf4j.Logger;
@@ -49,7 +49,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         }
         if (staticCfg != null) {
             logger.info("Static configuration will be used");
-            return new Dns(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
+            return new CouchbaseDiscovery(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
         }
         logger.error("Bad configuration, no discovery provided");
         throw new RuntimeException("Bad configuration, no discovery provided"); //TODO: Should break the main loop here
