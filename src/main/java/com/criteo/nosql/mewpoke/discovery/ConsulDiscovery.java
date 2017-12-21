@@ -20,8 +20,8 @@ import static java.util.stream.Collectors.toList;
 /**
  * Provide a discovery based on Consul.
  */
-public class Consul implements IDiscovery {
-    private static final Logger logger = LoggerFactory.getLogger(Consul.class);
+public class ConsulDiscovery implements IDiscovery {
+    private static final Logger logger = LoggerFactory.getLogger(ConsulDiscovery.class);
     private static final String MAINTENANCE_MODE = "_node_maintenance";
 
     private final String host;
@@ -31,7 +31,7 @@ public class Consul implements IDiscovery {
     private final List<String> tags;
     private final ExecutorService executor;
 
-    public Consul(final String host, final int port, final int timeout, final String readConsistency, final List<String> tags) {
+    public ConsulDiscovery(final String host, final int port, final int timeout, final String readConsistency, final List<String> tags) {
         this.host = host;
         this.port = port;
         this.timeout = timeout;
@@ -39,7 +39,6 @@ public class Consul implements IDiscovery {
         this.tags = tags;
         this.executor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("consul-%d").build());
     }
-
 
     private static String getFromTags(final HealthService.Service service, final String prefix) {
         return service.getTags().stream()
@@ -83,7 +82,7 @@ public class Consul implements IDiscovery {
                     .forEach(hsrv -> {
                         logger.debug("{}", hsrv.getNode());
                         nodes.add(new InetSocketAddress(hsrv.getNode().getAddress(), hsrv.getService().getPort()));
-                        srv[0] = new Service(Consul.getClusterName(hsrv.getService()), Consul.getBucketName(hsrv.getService()));
+                        srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()));
                     });
             if (nodes.size() > 0) {
                 servicesNodes.put(srv[0], nodes);

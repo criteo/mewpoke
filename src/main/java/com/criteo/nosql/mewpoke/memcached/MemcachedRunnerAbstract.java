@@ -4,6 +4,7 @@ import java.net.InetSocketAddress;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import com.criteo.nosql.mewpoke.discovery.ConsulDiscovery;
 import com.criteo.nosql.mewpoke.discovery.CouchbaseDiscovery;
 import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.discovery.Service;
@@ -11,7 +12,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.criteo.nosql.mewpoke.config.Config;
-import com.criteo.nosql.mewpoke.discovery.Consul;
 
 public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable {
 
@@ -43,7 +43,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         Config.StaticDiscovery staticCfg = discovery.getStaticDns();
         if (consulCfg != null) {
             logger.info("Consul configuration will be used");
-            return new Consul(consulCfg.getHost(), consulCfg.getPort(),
+            return new ConsulDiscovery(consulCfg.getHost(), consulCfg.getPort(),
                     consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
                     consulCfg.getTags());
         }
@@ -108,9 +108,9 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
             case UPDATE_TOPOLOGY:
                 Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
 
-                // Consul down ?
+                // Discovery down?
                 if (new_services.isEmpty()) {
-                    logger.info("Consul sent back no services to monitor. is it down ? Are you sure of your tags ?");
+                    logger.info("Discovery sent back no services to monitor. Is it down? Check your configuration.");
                     break;
                 }
 
@@ -145,7 +145,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     abstract protected void poke();
 
     @Override
-    public void close() throws Exception {
+    public void close() {
         discovery.close();
         monitors.values().forEach(mo -> mo.ifPresent(m -> {
             try {
