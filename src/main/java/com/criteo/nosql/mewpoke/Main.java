@@ -41,27 +41,30 @@ public class Main {
         logger.info("Starting an http server on port {}", httpServerPort);
         final HTTPServer server = new HTTPServer(httpServerPort, true);
 
-        // Get the runner depending on the configuration
-        final String runnerType = cfg.getService().getType();
-        final RUNNER runner = RUNNER.valueOf(runnerType);
-
         // Memcached client is too verbose, we keep only SEVERE messages
         java.util.logging.Logger memcachedLogger = java.util.logging.Logger.getLogger("net.spy.memcached");
         memcachedLogger.setLevel(Level.SEVERE);
         System.setProperty("net.spy.log.LoggerImpl", "net.spy.memcached.compat.log.SunLogger");
 
+        // Get the runner depending on the configuration
+        final String runnerType = cfg.getService().getType();
+
         // If an unexpected exception occurs, we retry
         for (; ; ) {
-            try {
-                logger.info("Run {}", runnerType);
-                runner.run(cfg, discovery);
-            } catch (Exception e) {
-                logger.error("An unexpected exception was thrown", e);
+            logger.info("Initialise {}", runnerType);
+            try(AutoCloseable runner = getRunner(runnerType, cfg, discovery)){
+                try {
+                    logger.info("Run {}", runnerType);
+                    ((Runnable)runner).run();
+                } catch (Exception e) {
+                    logger.error("An unexpected exception was thrown", e);
+                }
+
             }
         }
     }
 
-    private static IDiscovery getDiscovery(Config cfg){
+    private static IDiscovery getDiscovery(Config cfg) {
         final Config.ConsulDiscovery consulCfg = cfg.getDiscovery().getConsul();
         final Config.StaticDiscovery staticCfg = cfg.getDiscovery().getStaticDns();
         if (consulCfg != null) {
@@ -78,27 +81,27 @@ public class Main {
         throw new IllegalArgumentException("Bad configuration, no discovery was provided");
     }
 
-    private enum RUNNER {
-        MEMCACHED(MemcachedRunnerLatency.class),
-        MEMCACHED_STATS(MemcachedRunnerStats.class),
-        MEMCACHED_SLABS(MemcachedRunnerStatsItems.class),
-        COUCHBASE(CouchbaseRunnerLatency.class),
-        COUCHBASE_STATS(CouchbaseRunnerStats.class);
-
-        private final Class<? extends AutoCloseable> runner;
-
-        RUNNER(Class<? extends AutoCloseable> runner) {
-            this.runner = runner;
-        }
-
-        public void run(Config cfg, IDiscovery discovery) {
-            try (AutoCloseable r = runner
-                    .getConstructor(Config.class, IDiscovery.class)
-                    .newInstance(cfg, discovery)) {
-                ((Runnable) r).run();
-            } catch (Exception e) {
-                logger.error("Can't instantiate runner for {}", runner.getCanonicalName(), e);
+    private static AutoCloseable getRunner(String type, Config cfg, IDiscovery discovery) {
+        try {
+            switch (type) {
+                case "MEMCACHED":
+                    return new MemcachedRunnerLatency(cfg, discovery);
+                case "MEMCACHED_STATS":
+                    return new MemcachedRunnerStats(cfg, discovery);
+                case "MEMCACHED_SLABS":
+                    return new MemcachedRunnerStatsItems(cfg, discovery);
+                case "COUCHBASE":
+                    return new CouchbaseRunnerLatency(cfg, discovery);
+                case "COUCHBASE_STATS":
+                    return new CouchbaseRunnerStats(cfg, discovery);
+                default:
+                    final Class clazz = Class.forName(type);
+                    return (AutoCloseable) clazz
+                            .getConstructor(Config.class, IDiscovery.class)
+                            .newInstance(cfg, discovery);
             }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot load the service " + type, e);
         }
     }
 }
