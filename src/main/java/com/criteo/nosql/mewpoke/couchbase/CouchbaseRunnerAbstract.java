@@ -29,8 +29,8 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     public CouchbaseRunnerAbstract(Config cfg) {
         this.cfg = cfg;
         this.discovery = buildDiscovery(cfg.getDiscovery());
-        this.measurementPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("measurementPeriodInMs", "20")) * 1000L;
-        this.refreshDiscoveryPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("refreshDiscoveryPeriodInMs", "60")) * 1000L;
+        this.measurementPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("measurementPeriodInSec", "30")) * 1000L;
+        this.refreshDiscoveryPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("refreshDiscoveryPeriodInSec", "300")) * 1000L;
 
         this.monitors = Collections.emptyMap();
         this.metrics = Collections.emptyMap();
