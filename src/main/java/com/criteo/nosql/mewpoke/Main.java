@@ -3,6 +3,9 @@ package com.criteo.nosql.mewpoke;
 import com.criteo.nosql.mewpoke.config.Config;
 import com.criteo.nosql.mewpoke.couchbase.CouchbaseRunnerLatency;
 import com.criteo.nosql.mewpoke.couchbase.CouchbaseRunnerStats;
+import com.criteo.nosql.mewpoke.discovery.ConsulDiscovery;
+import com.criteo.nosql.mewpoke.discovery.CouchbaseDiscovery;
+import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerLatency;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerStats;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerStatsItems;
@@ -29,6 +32,9 @@ public class Main {
             return;
         }
 
+        // Get the discovery
+        final IDiscovery discovery = getDiscovery(cfg);
+
         // Start an http server to allow Prometheus scrapping
         // daemon=true, so if the scheduler is stopped, the JVM does not wait for http server termination
         final int httpServerPort = Integer.parseInt(cfg.getApp().getOrDefault("httpServerPort", "8080"));
@@ -48,11 +54,28 @@ public class Main {
         for (; ; ) {
             try {
                 logger.info("Run {}", runnerType);
-                runner.run(cfg);
+                runner.run(cfg, discovery);
             } catch (Exception e) {
                 logger.error("An unexpected exception was thrown", e);
             }
         }
+    }
+
+    private static IDiscovery getDiscovery(Config cfg){
+        final Config.ConsulDiscovery consulCfg = cfg.getDiscovery().getConsul();
+        final Config.StaticDiscovery staticCfg = cfg.getDiscovery().getStaticDns();
+        if (consulCfg != null) {
+            logger.info("Consul discovery will be used");
+            return new ConsulDiscovery(consulCfg.getHost(), consulCfg.getPort(),
+                    consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
+                    consulCfg.getTags());
+        }
+        if (staticCfg != null) {
+            logger.info("Static Couchbase discovery will be used");
+            return new CouchbaseDiscovery(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
+        }
+        logger.error("Bad configuration, no discovery was provided");
+        throw new IllegalArgumentException("Bad configuration, no discovery was provided");
     }
 
     private enum RUNNER {
@@ -68,8 +91,10 @@ public class Main {
             this.runner = runner;
         }
 
-        public void run(Config cfg) {
-            try (AutoCloseable r = runner.getConstructor(Config.class).newInstance(cfg)) {
+        public void run(Config cfg, IDiscovery discovery) {
+            try (AutoCloseable r = runner
+                    .getConstructor(Config.class, IDiscovery.class)
+                    .newInstance(cfg, discovery)) {
                 ((Runnable) r).run();
             } catch (Exception e) {
                 logger.error("Can't instantiate runner for {}", runner.getCanonicalName(), e);

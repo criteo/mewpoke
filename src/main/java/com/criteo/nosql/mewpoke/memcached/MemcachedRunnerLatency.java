@@ -5,11 +5,12 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.criteo.nosql.mewpoke.config.Config;
+import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.ecwid.consul.v1.health.model.HealthService;
 
 public class MemcachedRunnerLatency extends MemcachedRunnerAbstract {
-    public MemcachedRunnerLatency(final Config cfg) {
-        super(cfg);
+    public MemcachedRunnerLatency(final Config cfg, final IDiscovery discovery) {
+        super(cfg, discovery);
     }
 
     public void poke() {

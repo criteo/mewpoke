@@ -3,11 +3,12 @@ package com.criteo.nosql.mewpoke.couchbase;
 import java.util.Collections;
 
 import com.criteo.nosql.mewpoke.config.Config;
+import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 
 public class CouchbaseRunnerStats extends CouchbaseRunnerAbstract {
 
-    public CouchbaseRunnerStats(final Config cfg) {
-        super(cfg);
+    public CouchbaseRunnerStats(final Config cfg, final IDiscovery discovery) {
+        super(cfg, discovery);
     }
 
     @Override

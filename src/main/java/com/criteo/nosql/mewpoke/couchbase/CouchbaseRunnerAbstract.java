@@ -26,33 +26,15 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     protected Map<Service, Optional<CouchbaseMonitor>> monitors;
     protected Map<Service, CouchbaseMetrics> metrics;
 
-    public CouchbaseRunnerAbstract(Config cfg) {
+    public CouchbaseRunnerAbstract(Config cfg, IDiscovery discovery) {
         this.cfg = cfg;
-        this.discovery = buildDiscovery(cfg.getDiscovery());
+        this.discovery = discovery;
         this.measurementPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("measurementPeriodInSec", "30")) * 1000L;
         this.refreshDiscoveryPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("refreshDiscoveryPeriodInSec", "300")) * 1000L;
 
         this.monitors = Collections.emptyMap();
         this.metrics = Collections.emptyMap();
         this.services = Collections.emptyMap();
-    }
-
-    //TODO: externalize in a Builder
-    private IDiscovery buildDiscovery(Config.Discovery discovery) {
-        Config.ConsulDiscovery consulCfg = discovery.getConsul();
-        Config.StaticDiscovery staticCfg = discovery.getStaticDns();
-        if (consulCfg != null) {
-            logger.info("Consul discovery will be used");
-            return new ConsulDiscovery(consulCfg.getHost(), consulCfg.getPort(),
-                    consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
-                    consulCfg.getTags());
-        }
-        if (staticCfg != null) {
-            logger.info("Static Couchbase discovery will be used");
-            return new CouchbaseDiscovery(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
-        }
-        logger.error("Bad configuration, no discovery provided");
-        throw new IllegalArgumentException("Bad configuration, no discovery was provided"); //TODO: Should break the main loop
     }
 
     @Override
