@@ -32,9 +32,9 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         this.measurementPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("measurementPeriodInSec", "30")) * 1000L;
         this.refreshDiscoveryPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("refreshDiscoveryPeriodInSec", "300")) * 1000L;
 
+        this.services = Collections.emptyMap();
         this.monitors = Collections.emptyMap();
         this.metrics = Collections.emptyMap();
-        this.services = Collections.emptyMap();
     }
 
     @Override
@@ -88,42 +88,49 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
                 break;
 
             case UPDATE_TOPOLOGY:
-                Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
-
-                // Discovery down ?
-                if (new_services.isEmpty()) {
-                    logger.info("Discovery sent back no services to monitor. Is it down? Check your configuration.");
-                    break;
-                }
-
-                // Check if topology has changed
-                if (IDiscovery.areServicesEquals(services, new_services))
-                    break;
-
-                logger.info("Topology changed, updating it");
-                // Clean old monitors
-                monitors.values().forEach(mo -> mo.ifPresent(CouchbaseMonitor::close));
-                metrics.values().forEach(CouchbaseMetrics::close);
-
-                // Create new ones
-                services = new_services;
-                monitors = services.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey, e -> CouchbaseMonitor.fromNodes(e.getKey(), e.getValue(),
-                                cfg.getService().getTimeoutInSec() * 1000L,
-                                cfg.getService().getUsername(),
-                                cfg.getService().getPassword(),
-                                cfg.getCouchbaseStats())
-                        ));
-
-                metrics = new HashMap<>(monitors.size());
-                for (Map.Entry<Service, Optional<CouchbaseMonitor>> client : monitors.entrySet()) {
-                    metrics.put(client.getKey(), new CouchbaseMetrics(client.getKey()));
-                }
+                updateTopology();
                 break;
 
             case POKE:
                 poke();
                 break;
+        }
+    }
+
+    public void updateTopology() {
+        final Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
+
+        // Discovery down?
+        if (new_services.isEmpty()) {
+            logger.warn("Discovery sent back no service to monitor. Is it down? Check your configuration.");
+            return;
+        }
+
+        // Check if topology changed
+        if (IDiscovery.areServicesEquals(services, new_services)) {
+            logger.trace("No topology change.");
+            return;
+        }
+
+        logger.info("Topology changed. Monitors are updating...");
+        // Dispose old monitors and metrics
+        monitors.values().forEach(mo -> mo.ifPresent(CouchbaseMonitor::close));
+        metrics.values().forEach(CouchbaseMetrics::close);
+
+        // Create new ones
+        services = new_services;
+        final long timeoutInMs = cfg.getService().getTimeoutInSec() * 1000L;
+        monitors = services.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> CouchbaseMonitor.fromNodes(e.getKey(), e.getValue(),
+                        timeoutInMs,
+                        cfg.getService().getUsername(),
+                        cfg.getService().getPassword(),
+                        cfg.getCouchbaseStats())
+                ));
+
+        metrics = new HashMap<>(monitors.size());
+        for (Service service : monitors.keySet()) {
+            metrics.put(service, new CouchbaseMetrics(service));
         }
     }
 
