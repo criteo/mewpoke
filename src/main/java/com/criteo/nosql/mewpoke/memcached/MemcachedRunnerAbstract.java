@@ -32,9 +32,9 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         this.measurementPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("measurementPeriodInSec", "30")) * 1000L;
         this.refreshDiscoveryPeriodInMs = Long.parseLong(cfg.getApp().getOrDefault("refreshDiscoveryPeriodInSec", "300")) * 1000L;
 
+        this.services = Collections.emptyMap();
         this.monitors = Collections.emptyMap();
         this.metrics = Collections.emptyMap();
-        this.services = Collections.emptyMap();
     }
 
     @Override
@@ -88,34 +88,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
                 break;
 
             case UPDATE_TOPOLOGY:
-                Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
-
-                // Discovery down?
-                if (new_services.isEmpty()) {
-                    logger.info("Discovery sent back no services to monitor. Is it down? Check your configuration.");
-                    break;
-                }
-
-                // Check if topology has changed
-                if (IDiscovery.areServicesEquals(services, new_services))
-                    break;
-
-                logger.info("Topology changed, updating it");
-                // Clean old monitors
-                monitors.values().forEach(mo -> mo.ifPresent(MemcachedMonitor::close));
-                metrics.values().forEach(MemcachedMetrics::close);
-
-                // Create new ones
-                services = new_services;
-                monitors = services.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey, e -> MemcachedMonitor.fromNodes(e.getKey(), e.getValue(),
-                                cfg.getService().getTimeoutInSec() * 1000L)
-                        ));
-
-                metrics = new HashMap<>(monitors.size());
-                for (Map.Entry<Service, Optional<MemcachedMonitor>> client : monitors.entrySet()) {
-                    metrics.put(client.getKey(), new MemcachedMetrics(client.getKey()));
-                }
+                updateTopology();
                 break;
 
             case POKE:
@@ -124,7 +97,41 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         }
     }
 
-    abstract protected void poke();
+    public void updateTopology() {
+        final Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
+
+        // Discovery down?
+        if (new_services.isEmpty()) {
+            logger.warn("Discovery sent back no services to monitor. Is it down? Check your configuration.");
+            return;
+        }
+
+        // Check if topology has changed
+        if (IDiscovery.areServicesEquals(services, new_services)) {
+            logger.trace("No topology change.");
+            return;
+        }
+
+        logger.info("Topology changed. Monitors are updating...");
+        // Clean old monitors
+        monitors.values().forEach(mo -> mo.ifPresent(MemcachedMonitor::close));
+        metrics.values().forEach(MemcachedMetrics::close);
+
+        // Create new ones
+        services = new_services;
+        final long timeoutInMs = cfg.getService().getTimeoutInSec() * 1000L;
+        monitors = services.entrySet().stream()
+                .collect(Collectors.toMap(Map.Entry::getKey, e -> MemcachedMonitor.fromNodes(e.getKey(), e.getValue(),
+                        timeoutInMs)
+                ));
+
+        metrics = new HashMap<>(monitors.size());
+        for (Service service : monitors.keySet()) {
+            metrics.put(service, new MemcachedMetrics(service));
+        }
+    }
+
+    protected abstract void poke();
 
     @Override
     public void close() {
