@@ -1,10 +1,7 @@
 package com.criteo.nosql.mewpoke.discovery;
 
 import java.net.InetSocketAddress;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public interface IDiscovery extends AutoCloseable {
 
@@ -19,8 +16,9 @@ public interface IDiscovery extends AutoCloseable {
         }
 
         for (Map.Entry<Service, Set<InetSocketAddress>> e : ori.entrySet()) {
-            Set<InetSocketAddress> addresses = neo.getOrDefault(e.getKey(), Collections.emptySet());
-            if (addresses.size() != e.getValue().size() || !e.getValue().containsAll(addresses)) {
+            final Set<InetSocketAddress> oriAddresses = e.getValue();
+            final Set<InetSocketAddress> neoAddresses = neo.get(e.getKey());
+            if (!Objects.equals(oriAddresses, neoAddresses)) {
                 return false;
             }
         }

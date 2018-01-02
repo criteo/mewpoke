@@ -2,10 +2,7 @@ package com.criteo.nosql.mewpoke.memcached;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import com.criteo.nosql.mewpoke.discovery.ConsulDiscovery;
-import com.criteo.nosql.mewpoke.discovery.CouchbaseDiscovery;
 import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.discovery.Service;
 import org.slf4j.Logger;
@@ -23,8 +20,8 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     private final long refreshDiscoveryPeriodInMs;
 
     protected Map<Service, Set<InetSocketAddress>> services;
-    protected Map<Service, Optional<MemcachedMonitor>> monitors;
-    protected Map<Service, MemcachedMetrics> metrics;
+    protected final Map<Service, Optional<MemcachedMonitor>> monitors;
+    protected final Map<Service, MemcachedMetrics> metrics;
 
     public MemcachedRunnerAbstract(Config cfg, IDiscovery discovery) {
         this.cfg = cfg;
@@ -106,29 +103,34 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
             return;
         }
 
-        // Check if topology has changed
+        // Check if topology changed
         if (IDiscovery.areServicesEquals(services, new_services)) {
             logger.trace("No topology change.");
             return;
         }
 
         logger.info("Topology changed. Monitors are updating...");
-        // Clean old monitors
-        monitors.values().forEach(mo -> mo.ifPresent(MemcachedMonitor::close));
-        metrics.values().forEach(MemcachedMetrics::close);
+
+        // Dispose old monitors and metrics
+        services.forEach((service, addresses) -> {
+            if (!Objects.equals(addresses, new_services.get(service))) {
+                monitors.remove(service)
+                        .ifPresent(m -> m.close());
+                metrics.remove(service)
+                        .close();
+            }
+        });
 
         // Create new ones
-        services = new_services;
         final long timeoutInMs = cfg.getService().getTimeoutInSec() * 1000L;
-        monitors = services.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> MemcachedMonitor.fromNodes(e.getKey(), e.getValue(),
-                        timeoutInMs)
-                ));
+        new_services.forEach((service, new_addresses) -> {
+            if (!Objects.equals(services.get(service), new_addresses)) {
+                monitors.put(service, MemcachedMonitor.fromNodes(service, new_addresses, timeoutInMs));
+                metrics.put(service, new MemcachedMetrics(service));
+            }
+        });
 
-        metrics = new HashMap<>(monitors.size());
-        for (Service service : monitors.keySet()) {
-            metrics.put(service, new MemcachedMetrics(service));
-        }
+        services = new_services;
     }
 
     protected abstract void poke();
