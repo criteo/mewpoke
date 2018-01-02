@@ -35,4 +35,16 @@ public class Service {
         result = 31 * result + (bucketName != null ? bucketName.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public String toString() {
+        return new StringBuilder()
+                .append("Service {cluster='")
+                .append(clusterName)
+                .append("', bucket='")
+                .append(bucketName)
+                .append("'}")
+                .toString();
+
+    }
 }
