@@ -2,7 +2,6 @@ package com.criteo.nosql.mewpoke.couchbase;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.discovery.Service;
@@ -10,8 +9,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.criteo.nosql.mewpoke.config.Config;
-import com.criteo.nosql.mewpoke.discovery.ConsulDiscovery;
-import com.criteo.nosql.mewpoke.discovery.CouchbaseDiscovery;
 
 public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable {
 
@@ -23,8 +20,8 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     private final long refreshDiscoveryPeriodInMs;
 
     protected Map<Service, Set<InetSocketAddress>> services;
-    protected Map<Service, Optional<CouchbaseMonitor>> monitors;
-    protected Map<Service, CouchbaseMetrics> metrics;
+    protected final Map<Service, Optional<CouchbaseMonitor>> monitors;
+    protected final Map<Service, CouchbaseMetrics> metrics;
 
     public CouchbaseRunnerAbstract(Config cfg, IDiscovery discovery) {
         this.cfg = cfg;
@@ -106,32 +103,32 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
             return;
         }
 
-        // Check if topology changed
-        if (IDiscovery.areServicesEquals(services, new_services)) {
-            logger.trace("No topology change.");
-            return;
-        }
-
-        logger.info("Topology changed. Monitors are updating...");
-        // Dispose old monitors and metrics
-        monitors.values().forEach(mo -> mo.ifPresent(CouchbaseMonitor::close));
-        metrics.values().forEach(CouchbaseMetrics::close);
+        // Dispose old monitors
+        services.forEach((service, addresses) -> {
+            if (!Objects.equals(addresses, new_services.get(service))) {
+                logger.info("{} has changed, its monitor will be disposed.", service);
+                monitors.remove(service)
+                        .ifPresent(mon -> mon.close());
+                metrics.remove(service)
+                        .close();
+            }
+        });
 
         // Create new ones
-        services = new_services;
         final long timeoutInMs = cfg.getService().getTimeoutInSec() * 1000L;
-        monitors = services.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, e -> CouchbaseMonitor.fromNodes(e.getKey(), e.getValue(),
-                        timeoutInMs,
-                        cfg.getService().getUsername(),
-                        cfg.getService().getPassword(),
-                        cfg.getCouchbaseStats())
-                ));
+        final String username = cfg.getService().getUsername();
+        final String password = cfg.getService().getPassword();
+        final Config.CouchbaseStats cbStats = cfg.getCouchbaseStats();
+        new_services.forEach((service, new_addresses) -> {
+            if (!Objects.equals(services.get(service), new_addresses)) {
+                logger.info("A new Monitor for {} will be created.", service);
+                monitors.put(service, CouchbaseMonitor.fromNodes(service, new_addresses, timeoutInMs,
+                        username, password, cbStats));
+                metrics.put(service, new CouchbaseMetrics(service));
+            }
+        });
 
-        metrics = new HashMap<>(monitors.size());
-        for (Service service : monitors.keySet()) {
-            metrics.put(service, new CouchbaseMetrics(service));
-        }
+        services = new_services;
     }
 
     protected abstract void poke();
@@ -139,14 +136,12 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     @Override
     public void close() {
         discovery.close();
-        monitors.values().forEach(mo -> mo.ifPresent(m -> {
-            try {
-                m.close();
-            } catch (Exception e) {
-                logger.error("Error when releasing resources", e);
-            }
-        }));
-        metrics.values().forEach(CouchbaseMetrics::close);
+        monitors.values().stream()
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .forEach(mon -> mon.close());
+        metrics.values()
+                .forEach(metric -> metric.close());
     }
 
     private enum EVENT {
