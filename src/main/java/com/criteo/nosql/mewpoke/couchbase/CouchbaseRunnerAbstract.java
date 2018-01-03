@@ -1,17 +1,14 @@
 package com.criteo.nosql.mewpoke.couchbase;
 
-import java.net.InetSocketAddress;
-import java.util.*;
-import java.util.stream.Collectors;
-
+import com.criteo.nosql.mewpoke.config.Config;
 import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.discovery.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.criteo.nosql.mewpoke.config.Config;
-import com.criteo.nosql.mewpoke.discovery.ConsulDiscovery;
-import com.criteo.nosql.mewpoke.discovery.CouchbaseDiscovery;
+import java.net.InetSocketAddress;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable {
 
@@ -40,7 +37,7 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
     @Override
     public void run() {
 
-        List<EVENT> evts = Arrays.asList(EVENT.UPDATE_TOPOLOGY, EVENT.WAIT, EVENT.POKE);
+        List<EVENT> evts = Arrays.asList(EVENT.UPDATE_TOPOLOGY, EVENT.POKE);
         EVENT evt;
         long start, stop;
 
@@ -53,6 +50,16 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
             resheduleEvent(evt, start, stop);
             Collections.sort(evts, Comparator.comparingLong(event -> event.nexTick));
+
+            try {
+                long sleep_duration = evts.get(0).nexTick - System.currentTimeMillis() - 1;
+                if (sleep_duration > 0) {
+                    Thread.sleep(sleep_duration);
+                    logger.info("WAIT took {} ms", sleep_duration);
+                }
+            } catch (InterruptedException e) {
+                logger.error("thread interrupted {}", e);
+            }
         }
     }
 
@@ -62,11 +69,7 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
             logger.warn("Operation took longer than 1 tick, please increase tick rate if you see this message too often");
         }
 
-        EVENT.WAIT.nexTick = start + measurementPeriodInMs - 1;
         switch (lastEvt) {
-            case WAIT:
-                break;
-
             case UPDATE_TOPOLOGY:
                 lastEvt.nexTick = start + refreshDiscoveryPeriodInMs;
                 break;
@@ -79,14 +82,6 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
     public void dispatch_events(EVENT evt) {
         switch (evt) {
-            case WAIT:
-                try {
-                    Thread.sleep(Math.max(evt.nexTick - System.currentTimeMillis(), 0));
-                } catch (Exception e) {
-                    logger.error("thread interrupted {}", e);
-                }
-                break;
-
             case UPDATE_TOPOLOGY:
                 updateTopology();
                 break;
@@ -151,7 +146,6 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
     private enum EVENT {
         UPDATE_TOPOLOGY(System.currentTimeMillis()),
-        WAIT(System.currentTimeMillis()),
         POKE(System.currentTimeMillis());
 
         public long nexTick;
