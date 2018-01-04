@@ -52,11 +52,11 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
             Collections.sort(evts, Comparator.comparingLong(event -> event.nexTick));
 
             try {
-                long sleep_duration = Math.max(evts.get(0).nexTick - System.currentTimeMillis() - 1, 0);
+                long sleep_duration = evts.get(0).nexTick - System.currentTimeMillis() - 1;
                 if (sleep_duration > 0) {
                     Thread.sleep(sleep_duration);
+                    logger.info("WAIT took {} ms", sleep_duration);
                 }
-                logger.info("WAIT took {} ms", sleep_duration);
             } catch (InterruptedException e) {
                 logger.error("thread interrupted {}", e);
             }
@@ -97,11 +97,11 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
 
         // Discovery down?
         if (new_services.isEmpty()) {
-            logger.warn("Discovery sent back no services to monitor. Is it down? Check your configuration.");
+            logger.warn("Discovery sent back no service to monitor. Is it down? Check your configuration.");
             return;
         }
 
-        // Check if topology has changed
+        // Check if topology changed
         if (IDiscovery.areServicesEquals(services, new_services)) {
             logger.trace("No topology change.");
             return;
