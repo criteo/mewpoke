@@ -149,6 +149,10 @@ public class MemcachedMonitor implements AutoCloseable {
 
     @Override
     public void close() {
-        client.shutdown();
+        try {
+            client.shutdown();
+        } catch (Exception e) {
+            logger.error("Cannot shutdown memcached client properly for {}", serviceName, e);
+        }
     }
 }

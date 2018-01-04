@@ -334,7 +334,7 @@ public class CouchbaseMonitor implements AutoCloseable {
         try {
             client.disconnect();
         } catch (Exception e) {
-            logger.error("Cannot close couchbase client properly for {}", serviceName, e);
+            logger.error("Cannot disconnect couchbase client properly for {}", serviceName, e);
         }
     }
 }
