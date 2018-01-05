@@ -133,7 +133,6 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
 
     @Override
     public void close() {
-        discovery.close();
         monitors.values().forEach(mo -> mo.ifPresent(m ->
                 m.close()
         ));

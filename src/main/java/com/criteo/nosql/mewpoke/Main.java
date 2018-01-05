@@ -42,7 +42,7 @@ public class Main {
         final HTTPServer server = new HTTPServer(httpServerPort, true);
 
         // Memcached client is too verbose, we keep only SEVERE messages
-        java.util.logging.Logger memcachedLogger = java.util.logging.Logger.getLogger("net.spy.memcached");
+        final java.util.logging.Logger memcachedLogger = java.util.logging.Logger.getLogger("net.spy.memcached");
         memcachedLogger.setLevel(Level.SEVERE);
         System.setProperty("net.spy.log.LoggerImpl", "net.spy.memcached.compat.log.SunLogger");
 
@@ -57,9 +57,13 @@ public class Main {
                     logger.info("Run {}", runnerType);
                     ((Runnable)runner).run();
                 } catch (Exception e) {
-                    logger.error("An unexpected exception was thrown", e);
+                    logger.error("An unexpected exception was caught. We will rerun {}", runnerType, e);
+                } catch (Error e) {
+                    logger.error("An unexpected error was thrown, that indicates serious problems. The program will exit", e);
+                    discovery.close();
+                    server.stop();
+                    throw e;
                 }
-
             }
         }
     }

@@ -136,7 +136,6 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
     @Override
     public void close() {
-        discovery.close();
         monitors.values().forEach(mo -> mo.ifPresent(m ->
                 m.close()
         ));
