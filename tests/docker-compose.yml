@@ -1,0 +1,94 @@
+version: "2"
+services:
+  couchbase:
+    container_name: couchbase01
+    image: arungupta/couchbase
+    volumes:
+      # Override couchbase script to handle bucket creation
+      - ./couchbase/config/configure-node.sh:/opt/couchbase/configure-node.sh
+    ports:
+      - 8091:8091
+      - 8092:8092
+      - 8093:8093
+      - 8094:8094
+      - 11210:11210
+    networks:
+      - monitoring
+  mewpoke01:
+    container_name: mewpoke01
+    image: openjdk:alpine
+    command: "java -jar /mewpoke-bin/mewpoke-latest.jar /config/config_memcache.yml"
+    links:
+      - couchbase
+    ports:
+      - 8081:8081
+    volumes:
+      - ./mewpoke/config:/config
+      - ../build/libs:/mewpoke-bin/
+    networks:
+      - monitoring
+  mewpoke02:
+    container_name: mewpoke02
+    image: openjdk:alpine
+    command: "java -jar /mewpoke-bin/mewpoke-latest.jar /config/config_couchbase.yml"
+    links:
+      - couchbase
+    ports:
+      - 8082:8082
+    volumes:
+      - ./mewpoke/config:/config
+      - ../build/libs:/mewpoke-bin/
+    networks:
+      - monitoring
+  mewpoke03:
+    container_name: mewpoke03
+    image: openjdk:alpine
+    command: "java -jar /mewpoke-bin/mewpoke-latest.jar /config/config_couchbase_stats.yml"
+    links:
+      - couchbase
+    ports:
+      - 8080:8080
+    volumes:
+      - ./mewpoke/config:/config
+      - ../build/libs:/mewpoke-bin/
+    networks:
+      - monitoring
+  grafana:
+    image: grafana/grafana
+    container_name: grafana01
+    entrypoint: "/scripts/run_custom.sh" # Override entrypoint to create datasource and dashboard
+    volumes:
+      - ./grafana/config:/etc/grafana
+      - ./grafana/scripts:/scripts
+      - ./grafana/data:/var/lib/grafana
+    ports:
+      - 3000:3000
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=password
+    networks:
+      - monitoring
+    links:
+      - prometheus
+    #command: 
+    #  - /etc/grafana/run_custom.sh
+  prometheus:
+    image: prom/prometheus:v1.8.0
+    container_name: prometheus01
+    domainname: domain.local
+    volumes:
+      - ./prometheus/config:/etc/prometheus/
+      - ./prometheus/data:/prometheus
+    command:
+      - '-config.file=/etc/prometheus/prometheus.yml'
+      - '-storage.local.path=/prometheus'
+    ports:
+      - 9090:9090
+    links:
+      - mewpoke01
+      - mewpoke02
+      - mewpoke03
+    networks:
+      - monitoring
+networks:
+  monitoring:
+    driver: bridge
