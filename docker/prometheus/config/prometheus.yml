@@ -1,0 +1,9 @@
+global:
+  scrape_interval:     60s
+  evaluation_interval: 60s
+rule_files:
+    - "*.rules"
+scrape_configs:
+  - job_name: 'mewpoke'
+    static_configs:
+      - targets: ['mewpoke01:8081', 'mewpoke02:8082', 'mewpoke03:8080']

@@ -1,0 +1,108 @@
+# Availability
+
+instance:couchbase_availability:value{duration="instant"} =
+    min(couchbase_up{job="mewpoke"}) by (cluster, command, bucket, exported_instance, quantile)
+
+
+instance:couchbase_availability:value{duration="10m"} =
+    avg_over_time(instance:couchbase_availability:value{duration="instant"}[10m])
+
+
+bucket:couchbase_availability:value{duration="instant"} =
+    avg(instance:couchbase_availability:value{duration="instant"}) by (cluster, command, bucket, quantile)
+
+
+bucket:couchbase_availability:value{duration="10m"} =
+    avg_over_time(bucket:couchbase_availability:value{duration="instant"}[10m])
+
+
+cluster:couchbase_availability:value{duration="instant"} =
+    avg(instance:couchbase_availability:value{duration="instant"}) by (cluster, command, quantile)
+
+
+cluster:couchbase_availability:value{duration="10m"} =
+    avg_over_time(cluster:couchbase_availability:value{duration="instant"}[10m])
+
+
+# Latency
+
+instance:couchbase_latency:value{duration="instant"} =
+    max(memcached_latency{job="mewpoke"}) by (cluster, command, bucket, exported_instance, quantile)
+
+bucket:couchbase_latency:value{duration="instant"} =
+    max(memcached_latency{job="mewpoke"}) by (cluster, command, bucket, quantile)
+
+cluster:couchbase_latency:value{duration="instant"} =
+    max(memcached_latency{job="mewpoke"}) by (cluster, command, quantile)
+
+# Stats
+
+
+instance:couchbase_cmd_set =
+    max(couchbase_stats{name="cmd_set",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_cmd_get =
+    max(couchbase_stats{name="cmd_get",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_get_misses =
+    max(couchbase_stats{name="get_misses",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_get_hits =
+    max(couchbase_stats{name="get_hits",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_mem_used =
+    max(couchbase_stats{name="mem_used",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_ep_max_size =
+    max(couchbase_stats{name="ep_max_size",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_ep_mem_high_wat =
+    max(couchbase_stats{name="ep_mem_high_wat",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_ep_mem_low_wat =
+    max(couchbase_stats{name="ep_mem_low_wat",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_curr_items =
+    max(couchbase_stats{name="curr_items",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_ep_diskqueue_items =
+    max(couchbase_stats{name="ep_diskqueue_items",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_ep_tmp_oom_errors =
+    max(couchbase_stats{name="ep_tmp_oom_errors",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_ep_oom_errors =
+    max(couchbase_stats{name="ep_oom_errors",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_evictions =
+    max(couchbase_stats{name="evictions",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_couch_docs_fragmentation =
+    max(couchbase_stats{name="couch_docs_fragmentation",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+instance:couchbase_couch_docs_disk_size =
+    max(couchbase_stats{name="couch_docs_disk_size",job="mewpoke"}) by (cluster, bucket, exported_instance)
+
+
+
+bucket:couchbase_xdcr_bandwidth_usage =
+    max(couchbase_xdcr { name="bandwidth_usage" }) by (bucket, cluster, stat, remotecluster)
+
+bucket:couchbase_xdcr_percent_completeness =
+    max(couchbase_xdcr { name="percent_completeness" }) by (bucket, cluster, stat, remotecluster)
+
+bucket:couchbase_xdcr_changes_left =
+    max(couchbase_xdcr { name="changes_left" }) by (bucket, cluster, stat, remotecluster)
+
+
+### Ongoing rebalance - cluster
+cluster:couchbase_operations:value = max(couchbase_operations) by (cluster, operation)
+
+### Number of active/inactive nodes in the cluster
+cluster:couchbase_nodes_membership:value = max(couchbase_membership) by (cluster, membership)
+
+# Get Data fragmentation for all buckets (only usable on couchbase 4 and more ...)
+bucket:couchbase_fragmentation = avg(couchbase_stats{name="couch_docs_fragmentation"}) by (bucket, cluster)
+
+cluster:couchbase_ram_usage:value{job="couchbase"} = sum(couchbase_stats{name="mem_used"}) by (cluster) / sum(couchbase_stats{name="ep_max_size"}) by (cluster) * 101
+bucket:couchbase_ram_usage:value{job="couchbase"} = sum(couchbase_stats{name="mem_used"}) by (bucket, cluster) / sum(couchbase_stats{name="ep_max_size"}) by (bucket, cluster) * 101

@@ -1,0 +1,29 @@
+app:
+  measurementPeriodInSec: 30
+  refreshDiscoveryPeriodInSec: 120
+  httpServerPort: 8080
+
+discovery:
+  refreshEveryMin: 1
+#  consul:
+#    host: consul.service.consul
+#    port: 8500
+#    timeoutInSec: 10
+#    readConsistency: STALE
+#    tags:
+#     - couchbase-memcached
+     #- cluster=CLUSTERNAME
+     #- bucket=BUCKETNAME
+  staticDns:
+    clustername: cluster01
+    host: couchbase01
+
+service:
+  type: COUCHBASE_STATS
+  timeoutInSec: 60
+  username: Administrator
+  password: password
+
+couchbaseStats:
+  bucket: # API : /pools/default/buckets/MYBUCKET/nodes/MYNODE:PORT/stats
+  xdcr: # API: replications/XDCR_UUID/MYBUCKET_SOURCE/MYBUCKET_DESTINATION/
