@@ -48,10 +48,14 @@ public class CouchbaseDiscovery implements IDiscovery {
                 final String bucketname = b.name();
                 final Service srv = new Service(clustername, bucketname);
                 final Set<InetSocketAddress> nodes = new HashSet<>();
+                final BucketSettings bucketsettings = clusterManager.getBucket(bucketname);
 
                 clusterNodes.forEach(n -> {
                     final String ipaddr = ((JsonObject) n).getString("hostname").split(":")[0];
-                    final Integer port = ((JsonObject) n).getObject("ports").getInt("direct");
+                    final Integer port = bucketsettings.port();
+                    if (port == 0){
+                        logger.error("Could not get dedicated port for bucket {}, latency won't work", bucketname);
+                    }
                     logger.debug("Node {} for bucket {}", ipaddr, bucketname);
                     nodes.add(new InetSocketAddress(ipaddr, port));
                 });
