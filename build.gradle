@@ -65,3 +65,10 @@ jar {
         attributes 'Main-Class': mainClassName
     }
 }
+
+task latest(type: Exec) {
+    println 'Creating symlink latest to: build/libs/mewpoke-' + version + '-all.jar'
+    workingDir 'build/libs/'
+    commandLine 'ln', '-s', 'mewpoke-' + version + '-all.jar', 'mewpoke-latest.jar'
+}
+build.finalizedBy(latest)
