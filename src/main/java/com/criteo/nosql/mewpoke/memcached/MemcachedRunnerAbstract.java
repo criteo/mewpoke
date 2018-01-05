@@ -34,37 +34,40 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
         this.metrics = new HashMap<>();
     }
 
+    /**
+     * Run monitors and discovery periodically.
+     * It is an infinite loop. We can stop by interrupting its Thread
+     */
     @Override
     public void run() {
 
-        List<EVENT> evts = Arrays.asList(EVENT.UPDATE_TOPOLOGY, EVENT.POKE);
-        EVENT evt;
-        long start, stop;
+        final List<EVENT> evts = Arrays.asList(EVENT.UPDATE_TOPOLOGY, EVENT.POKE);
 
-        for (; ; ) {
-            start = System.currentTimeMillis();
-            evt = evts.get(0);
-            dispatch_events(evt);
-            stop = System.currentTimeMillis();
-            logger.info("{} took {} ms", evt, stop - start);
+        try {
+            for (; ; ) {
+                final long start = System.currentTimeMillis();
+                final EVENT evt = evts.get(0);
+                dispatch_events(evt);
+                final long stop = System.currentTimeMillis();
+                logger.info("{} took {} ms", evt, stop - start);
 
-            resheduleEvent(evt, start, stop);
-            Collections.sort(evts, Comparator.comparingLong(event -> event.nexTick));
+                resheduleEvent(evt, start, stop);
+                Collections.sort(evts, Comparator.comparingLong(event -> event.nexTick));
 
-            try {
-                long sleep_duration = evts.get(0).nexTick - System.currentTimeMillis() - 1;
+                final long sleep_duration = evts.get(0).nexTick - System.currentTimeMillis() - 1;
                 if (sleep_duration > 0) {
                     Thread.sleep(sleep_duration);
                     logger.info("WAIT took {} ms", sleep_duration);
                 }
-            } catch (InterruptedException e) {
-                logger.error("thread interrupted {}", e);
             }
+        } catch (InterruptedException e) {
+            logger.error("The run was interrupted");
+            Thread.currentThread().interrupt();
         }
     }
 
     private void resheduleEvent(EVENT lastEvt, long start, long stop) {
-        long duration = stop - start;
+        final long duration = stop - start;
         if (duration >= measurementPeriodInMs) {
             logger.warn("Operation took longer than 1 tick, please increase tick rate if you see this message too often");
         }
