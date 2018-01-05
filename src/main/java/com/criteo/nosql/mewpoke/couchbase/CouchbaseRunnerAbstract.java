@@ -34,6 +34,10 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         this.metrics = new HashMap<>();
     }
 
+    /**
+     * Run monitors and discovery periodically.
+     * It is an infinite loop. We can stop by interrupting its Thread
+     */
     @Override
     public void run() {
 
@@ -41,25 +45,26 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         EVENT evt;
         long start, stop;
 
-        for (; ; ) {
-            start = System.currentTimeMillis();
-            evt = evts.get(0);
-            dispatch_events(evt);
-            stop = System.currentTimeMillis();
-            logger.info("{} took {} ms", evt, stop - start);
+        try {
+            for (; ; ) {
+                start = System.currentTimeMillis();
+                evt = evts.get(0);
+                dispatch_events(evt);
+                stop = System.currentTimeMillis();
+                logger.info("{} took {} ms", evt, stop - start);
 
-            resheduleEvent(evt, start, stop);
-            Collections.sort(evts, Comparator.comparingLong(event -> event.nexTick));
+                resheduleEvent(evt, start, stop);
+                Collections.sort(evts, Comparator.comparingLong(event -> event.nexTick));
 
-            try {
                 long sleep_duration = evts.get(0).nexTick - System.currentTimeMillis() - 1;
                 if (sleep_duration > 0) {
                     Thread.sleep(sleep_duration);
                     logger.info("WAIT took {} ms", sleep_duration);
                 }
-            } catch (InterruptedException e) {
-                logger.error("thread interrupted {}", e);
             }
+        } catch (InterruptedException e) {
+            logger.error("The run was interrupted");
+            Thread.currentThread().interrupt();
         }
     }
 
