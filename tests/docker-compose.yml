@@ -17,7 +17,7 @@ services:
   mewpoke01:
     container_name: mewpoke01
     image: openjdk:alpine
-    command: "java -jar /mewpoke-bin/mewpoke-latest.jar /config/config_memcache.yml"
+    command: sh -c "java -jar /mewpoke-bin/mewpoke-*-all.jar /config/config_memcache.yml"
     links:
       - couchbase
     ports:
@@ -30,7 +30,7 @@ services:
   mewpoke02:
     container_name: mewpoke02
     image: openjdk:alpine
-    command: "java -jar /mewpoke-bin/mewpoke-latest.jar /config/config_couchbase.yml"
+    command: sh -c "java -jar /mewpoke-bin/mewpoke-*-all.jar /config/config_couchbase.yml"
     links:
       - couchbase
     ports:
@@ -43,7 +43,7 @@ services:
   mewpoke03:
     container_name: mewpoke03
     image: openjdk:alpine
-    command: "java -jar /mewpoke-bin/mewpoke-latest.jar /config/config_couchbase_stats.yml"
+    command: sh -c "java -jar /mewpoke-bin/mewpoke-*-all.jar /config/config_couchbase_stats.yml"
     links:
       - couchbase
     ports:
