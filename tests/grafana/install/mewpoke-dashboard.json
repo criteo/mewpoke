@@ -461,7 +461,7 @@
 					"instant": false,
 					"interval": "",
 					"intervalFactor": 2,
-					"legendFormat": "{{cluster}}",
+					"legendFormat": "{{$cluster}}",
 					"refId": "A"
 				}],
 				"thresholds": [],
@@ -770,13 +770,13 @@
 				"stack": false,
 				"steppedLine": false,
 				"targets": [{
-					"expr": "count by (cluster,bucket) (instance:couchbase_cmd_set{cluster=\"$cluster\", bucket=~\"$bucket\"})",
+					"expr": "sum by (cluster,bucket) (instance:couchbase_cmd_set{cluster=\"$cluster\", bucket=~\"$bucket\"})",
 					"format": "time_series",
 					"intervalFactor": 2,
 					"legendFormat": "Set {{cluster}}.{{bucket}}",
 					"refId": "A"
 				}, {
-					"expr": "count by (cluster,bucket) (instance:couchbase_cmd_get{cluster=\"$cluster\", bucket=~\"$bucket\"})",
+					"expr": "sum by (cluster,bucket) (instance:couchbase_cmd_get{cluster=\"$cluster\", bucket=~\"$bucket\"})",
 					"format": "time_series",
 					"intervalFactor": 2,
 					"legendFormat": "Get {{cluster}}.{{bucket}}",
@@ -916,9 +916,10 @@
 				"stack": false,
 				"steppedLine": false,
 				"targets": [{
-					"expr": "sum by (cluster, bucket) (instance:couchbase_cmd_get{cluster=\"$cluster\", bucket=~\"$bucket\"}) ",
+					"expr": "100 * sum by (cluster, bucket) (instance:couchbase_cmd_get{cluster=\"$cluster\", bucket=~\"$bucket\"}) / sum by (cluster, bucket) (instance:couchbase_get_hits{cluster=\"$cluster\", bucket=~\"$bucket\"}) ",
 					"format": "time_series",
 					"intervalFactor": 2,
+					"legendFormat": "{$bucket}",
 					"refId": "A"
 				}],
 				"thresholds": [],
@@ -939,11 +940,11 @@
 					"values": []
 				},
 				"yaxes": [{
-					"format": "short",
+					"format": "percent",
 					"label": null,
 					"logBase": 1,
-					"max": null,
-					"min": null,
+					"max": "100",
+					"min": "0",
 					"show": true
 				}, {
 					"format": "short",
@@ -1046,8 +1047,8 @@
 			"list": [{
 				"allValue": null,
 				"current": {
-					"text": "",
-					"value": ""
+					"text": "cluster01",
+					"value": "cluster01"
 				},
 				"datasource": "prometheus",
 				"hide": 0,
@@ -1121,6 +1122,6 @@
 		},
 		"timezone": "",
 		"title": "Mewpoke Couchbase",
-		"version": 1
+		"version": 3
 	}
 }
