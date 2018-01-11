@@ -56,10 +56,10 @@ services:
   grafana:
     image: grafana/grafana
     container_name: grafana01
-    entrypoint: "/scripts/run_custom.sh" # Override entrypoint to create datasource and dashboard
+    entrypoint: "/install/run_custom.sh" # Override entrypoint to create datasource and dashboard
     volumes:
       - ./grafana/config:/etc/grafana
-      - ./grafana/scripts:/scripts
+      - ./grafana/install:/install
       - ./grafana/data:/var/lib/grafana
     ports:
       - 3000:3000
