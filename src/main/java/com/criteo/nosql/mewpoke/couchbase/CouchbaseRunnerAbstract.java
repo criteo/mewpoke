@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable {
 
