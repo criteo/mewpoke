@@ -2,7 +2,6 @@ package com.criteo.nosql.mewpoke.prometheus;
 
 import io.prometheus.client.Collector;
 import io.prometheus.client.CollectorRegistry;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Enumeration;
 import java.util.Iterator;
@@ -19,12 +18,12 @@ public class MetaCollectorRegistry extends CollectorRegistry {
 
     @Override
     public void register(Collector m) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public void unregister(Collector m) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     public void register(CollectorRegistry m) {
@@ -52,12 +51,12 @@ public class MetaCollectorRegistry extends CollectorRegistry {
 
     @Override
     public Double getSampleValue(String name) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override
     public Double getSampleValue(String name, String[] labelNames, String[] labelValues) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     class MetricFamilySamplesEnumeration implements Enumeration<Collector.MetricFamilySamples> {
