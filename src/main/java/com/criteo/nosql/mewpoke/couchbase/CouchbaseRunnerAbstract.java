@@ -135,10 +135,12 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
 
     @Override
     public void close() {
-        monitors.values().forEach(mo -> mo.ifPresent(m ->
-                m.close()
-        ));
-        metrics.values().forEach(CouchbaseMetrics::close);
+        monitors.values().stream()
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .forEach(mon -> mon.close());
+        metrics.values()
+                .forEach(metric -> metric.close());
     }
 
     private enum EVENT {
@@ -150,6 +152,5 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         EVENT(long nexTick) {
             this.nexTick = nexTick;
         }
-
     }
 }

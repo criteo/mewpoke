@@ -53,7 +53,7 @@ public class Main {
 
         // If an unexpected exception occurs, we retry
         for (; ; ) {
-            logger.info("Initialise {}", runnerType);
+            logger.info("Loading {}", runnerType);
             try(AutoCloseable runner = getRunner(runnerType, cfg, discovery)){
                 try {
                     logger.info("Run {}", runnerType);
