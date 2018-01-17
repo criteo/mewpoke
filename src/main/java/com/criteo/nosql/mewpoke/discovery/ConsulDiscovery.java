@@ -56,20 +56,18 @@ public class ConsulDiscovery implements IDiscovery {
     }
 
     private Map<Service, Set<InetSocketAddress>> getServicesNodesForImpl(List<String> tags) {
-        ConsulClient client = new ConsulClient(host, port);
-        final String[] platformSuffixes = new String[]{"-eu", "-us", "-as"};
+        final ConsulClient client = new ConsulClient(host, port);
 
-        List<Map.Entry<String, List<String>>> services =
+        final List<Map.Entry<String, List<String>>> services =
                 client.getCatalogServices(params).getValue().entrySet().stream()
-                        .filter(entry -> !Collections.disjoint(entry.getValue(), tags)
-                                && Arrays.stream(platformSuffixes).noneMatch(suffix -> entry.getKey().toLowerCase().endsWith(suffix)))
+                        .filter(entry -> !Collections.disjoint(entry.getValue(), tags))
                         .map(entry -> {
                             logger.info("Found service matching {}", entry.getKey());
                             return entry;
                         })
                         .collect(toList());
 
-        Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>(services.size());
+        final Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>(services.size());
         for (Map.Entry<String, List<String>> service : services) {
             final Set<InetSocketAddress> nodes = new HashSet<>();
             final Service[] srv = new Service[]{null};
