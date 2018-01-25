@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -73,9 +74,49 @@ public class MemcachedMonitor implements AutoCloseable {
         return (Map) client.getStats();
     }
 
+
+
     public Map<InetSocketAddress, Map<String, String>> collectStatsItems() {
         // TODO: re-implement get stats in order to avoid creating new map each time
-        return (Map) client.getStats("items");
+        final Map<SocketAddress, Map<String, String>> itemsStats = client.getStats("items");
+        final Map<SocketAddress, Map<String, String>> slabsStats = client.getStats("slabs");
+        final Map<SocketAddress, Map<String, String>> nodeSettings = client.getStats("settings");
+
+        // We return slab size range instead of slabid
+        // Need to re-construct client.getStats
+        final Map<SocketAddress, Map<String, String>> itemsStatsByRange = new HashMap<>();
+
+        itemsStats.forEach((socketAddr, itemStats) -> {
+
+            // Construct Map of slabid:slab range size for each node
+            final Map<String, Double> minSizeBySlabId = new HashMap<>();
+            slabsStats.get(socketAddr).forEach((statName, statValue) -> {
+                if(statName.matches("(.*):chunk_size")){
+                    String slabId = statName.split(":")[0];
+                    Double slabMinSize = Double.valueOf(statValue);
+                    minSizeBySlabId.put(slabId, slabMinSize);
+                }
+            });
+
+            // Replace slabid with slabsize for all metrics
+            final Map<String, String> itemStatsByRange = new HashMap<>();
+            itemStats.forEach((slabsStatsByIds, statValue) -> {
+                final String slabId = slabsStatsByIds.split(":")[1];
+                final Double slabMinSize = minSizeBySlabId.get(slabId);
+                final Double growthFactor = Double.valueOf(nodeSettings.get(socketAddr).get("growth_factor"));
+                final Double slabMaxSize = growthFactor * slabMinSize;
+
+                String slabsStatsByRange = slabsStatsByIds.split(":")[0] + ":"
+                        + "[" + slabMinSize.intValue() + "B - "
+                        + slabMaxSize.intValue() + "B]:"
+                        + slabsStatsByIds.split(":")[2];
+                itemStatsByRange.put(slabsStatsByRange, statValue);
+            });
+
+            // Return new Map with slabid replaced by slabsize
+            itemsStatsByRange.put(socketAddr, itemStatsByRange);
+        });
+        return (Map) itemsStatsByRange;
     }
 
     public Map<InetSocketAddress, Long> collectGetLatencies() {

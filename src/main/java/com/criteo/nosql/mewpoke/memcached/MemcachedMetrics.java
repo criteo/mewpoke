@@ -67,10 +67,10 @@ public class MemcachedMetrics implements AutoCloseable {
     public void updateStatsItems(final Map<InetSocketAddress, Map<String, String>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
             stats.forEach((statname, statvalue) -> {
-                final String slabId = statname.split(":")[1];
+                final String slabSizeRange = statname.split(":")[1];
                 final String name = statname.split(":")[2];
                 final Double val = Doubles.tryParse(statvalue);
-                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabId, name)
+                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabSizeRange, name)
                         .set(val == null ? Double.NaN : val);
             });
         });
