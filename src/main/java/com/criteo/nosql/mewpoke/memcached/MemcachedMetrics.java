@@ -1,11 +1,13 @@
 package com.criteo.nosql.mewpoke.memcached;
 
 import com.criteo.nosql.mewpoke.discovery.Service;
+import com.google.common.base.Splitter;
 import com.google.common.primitives.Doubles;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Summary;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Map;
 
 public class MemcachedMetrics implements AutoCloseable {
@@ -36,7 +38,7 @@ public class MemcachedMetrics implements AutoCloseable {
     private static final Gauge STATSITEMS = Gauge.build()
             .name("memcached_items")
             .help("Get items statistics by slab ID")
-            .labelNames("cluster", "bucket", "instance", "slabid", "name")
+            .labelNames("cluster", "bucket", "instance", "slabsizerange", "name")
             .register();
 
     private final String clusterName;
@@ -62,10 +64,11 @@ public class MemcachedMetrics implements AutoCloseable {
     public void updateStatsItems(final Map<InetSocketAddress, Map<String, String>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
             stats.forEach((statname, statvalue) -> {
-                final String slabId = statname.split(":")[1];
-                final String name = statname.split(":")[2];
+                List<String> listStatname = Splitter.on(':').splitToList(statname);
+                final String slabSizeRange = listStatname.get(1);
+                final String name = listStatname.get(2);
                 final Double val = Doubles.tryParse(statvalue);
-                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabId, name)
+                STATSITEMS.labels(clusterName, bucketName, addr.getHostName(), slabSizeRange, name)
                         .set(val == null ? Double.NaN : val);
             });
         });
