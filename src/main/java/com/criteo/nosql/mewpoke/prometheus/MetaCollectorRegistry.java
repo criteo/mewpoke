@@ -9,6 +9,8 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+// TODO: there is a bug when we define several collector with the same (what we want)
+// TODO: So we cannot use this class as it.
 public class MetaCollectorRegistry extends CollectorRegistry {
     public static final MetaCollectorRegistry metaRegistry = new MetaCollectorRegistry();
     private final CopyOnWriteArrayList<CollectorRegistry> registries = new CopyOnWriteArrayList<>();

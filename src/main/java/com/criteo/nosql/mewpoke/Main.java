@@ -9,14 +9,11 @@ import com.criteo.nosql.mewpoke.discovery.IDiscovery;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerLatency;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerStats;
 import com.criteo.nosql.mewpoke.memcached.MemcachedRunnerStatsItems;
-import com.criteo.nosql.mewpoke.prometheus.MetaCollectorRegistry;
 import io.prometheus.client.exporter.HTTPServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.net.InetSocketAddress;
 import java.util.logging.Level;
-
 
 public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
@@ -41,7 +38,7 @@ public class Main {
         // daemon=true, so if the scheduler is stopped, the JVM does not wait for http server termination
         final int httpServerPort = Integer.parseInt(cfg.getApp().getOrDefault("httpServerPort", "8080"));
         logger.info("Starting an http server on port {}", httpServerPort);
-        final HTTPServer server = new HTTPServer(new InetSocketAddress("0.0.0.0", httpServerPort), MetaCollectorRegistry.metaRegistry, true);
+        final HTTPServer server = new HTTPServer(httpServerPort, true);
 
         // Memcached client is too verbose, we keep only SEVERE messages
         final java.util.logging.Logger memcachedLogger = java.util.logging.Logger.getLogger("net.spy.memcached");

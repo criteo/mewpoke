@@ -1,8 +1,6 @@
 package com.criteo.nosql.mewpoke.couchbase;
 
 import com.criteo.nosql.mewpoke.discovery.Service;
-import com.criteo.nosql.mewpoke.prometheus.MetaCollectorRegistry;
-import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Summary;
 
@@ -11,14 +9,13 @@ import java.util.Map;
 
 public class CouchbaseMetrics implements AutoCloseable {
 
-    private final CollectorRegistry registry = new CollectorRegistry(true);
-    private final Gauge UP = Gauge.build()
+    private static final Gauge UP = Gauge.build()
             .name("couchbase_up")
             .help("Are the servers up?")
             .labelNames("cluster", "bucket", "instance")
-            .register(registry);
+            .register();
 
-    private final Summary LATENCY = Summary.build()
+    private static final Summary LATENCY = Summary.build()
             .name("couchbase_latency")
             .help("latencies observed by instance and command")
             .labelNames("cluster", "bucket", "instance", "command")
@@ -27,31 +24,31 @@ public class CouchbaseMetrics implements AutoCloseable {
             .quantile(0.5, 0.05)
             .quantile(0.9, 0.01)
             .quantile(0.99, 0.001)
-            .register(registry);
+            .register();
 
-    private final Gauge OPERATIONS = Gauge.build()
+    private static final Gauge OPERATIONS = Gauge.build()
             .name("couchbase_operations")
             .help("Cluster ongoing operations")
             .labelNames("cluster", "operation")
-            .register(registry);
+            .register();
 
-    private final Gauge MEMBERSHIP = Gauge.build()
+    private static final Gauge MEMBERSHIP = Gauge.build()
             .name("couchbase_membership")
             .help("Cluster membership status")
             .labelNames("cluster", "membership")
-            .register(registry);
+            .register();
 
-    private final Gauge STATS = Gauge.build()
+    private static final Gauge STATS = Gauge.build()
             .name("couchbase_stats")
             .help("Cluster API Stats")
             .labelNames("cluster", "bucket", "instance", "name")
-            .register(registry);
+            .register();
 
-    private final Gauge XDCR = Gauge.build()
+    private static final Gauge XDCR = Gauge.build()
             .name("couchbase_xdcr")
             .help("Cluster API Stats XDCR")
             .labelNames("cluster", "bucket", "remotecluster", "name")
-            .register(registry);
+            .register();
 
     private final String clusterName;
     private final String bucketName;
@@ -60,8 +57,6 @@ public class CouchbaseMetrics implements AutoCloseable {
     public CouchbaseMetrics(final Service service) {
         this.clusterName = service.getClusterName();
         this.bucketName = service.getBucketName().replace('.', '_');
-
-        MetaCollectorRegistry.metaRegistry.register(this.registry);
     }
 
     public void updateRebalanceOps(final boolean rebalanceOngoing) {
@@ -110,17 +105,12 @@ public class CouchbaseMetrics implements AutoCloseable {
 
     @Override
     public void close() {
-        // TODO: Not sure if all those clear on collector are necessary
-        // but as I found no information in prometheus regarding if it keeps some references
-        // So let be safe, and clean everything
+        // FIXME we should remove only metrics with the labels cluster=clustername, bucket=bucketName
         UP.clear();
         LATENCY.clear();
         OPERATIONS.clear();
         MEMBERSHIP.clear();
         STATS.clear();
         XDCR.clear();
-        registry.clear();
-
-        MetaCollectorRegistry.metaRegistry.unregister(registry);
     }
 }

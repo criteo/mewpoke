@@ -1,9 +1,7 @@
 package com.criteo.nosql.mewpoke.memcached;
 
 import com.criteo.nosql.mewpoke.discovery.Service;
-import com.criteo.nosql.mewpoke.prometheus.MetaCollectorRegistry;
 import com.google.common.primitives.Doubles;
-import io.prometheus.client.CollectorRegistry;
 import io.prometheus.client.Gauge;
 import io.prometheus.client.Summary;
 
@@ -12,14 +10,13 @@ import java.util.Map;
 
 public class MemcachedMetrics implements AutoCloseable {
 
-    private final CollectorRegistry registry = new CollectorRegistry(true);
-    private final Gauge UP = Gauge.build()
+    private static final Gauge UP = Gauge.build()
             .name("memcached_up")
             .help("Are the servers up?")
             .labelNames("cluster", "bucket", "instance")
-            .register(registry);
+            .register();
 
-    private final Summary LATENCY = Summary.build()
+    private static final Summary LATENCY = Summary.build()
             .name("memcached_latency")
             .help("latencies observed by instance and command")
             .labelNames("cluster", "bucket", "instance", "command")
@@ -28,19 +25,19 @@ public class MemcachedMetrics implements AutoCloseable {
             .quantile(0.5, 0.05)
             .quantile(0.9, 0.01)
             .quantile(0.99, 0.001)
-            .register(registry);
+            .register();
 
-    private final Gauge STATS = Gauge.build()
+    private static final Gauge STATS = Gauge.build()
             .name("memcached_stats")
             .help("get global stats")
             .labelNames("cluster", "bucket", "instance", "name")
-            .register(registry);
+            .register();
 
-    private final Gauge STATSITEMS = Gauge.build()
+    private static final Gauge STATSITEMS = Gauge.build()
             .name("memcached_items")
             .help("Get items statistics by slab ID")
             .labelNames("cluster", "bucket", "instance", "slabid", "name")
-            .register(registry);
+            .register();
 
     private final String clusterName;
     private final String bucketName;
@@ -49,8 +46,6 @@ public class MemcachedMetrics implements AutoCloseable {
     public MemcachedMetrics(final Service service) {
         this.clusterName = service.getClusterName();
         this.bucketName = service.getBucketName().replace('.', '_');
-
-        MetaCollectorRegistry.metaRegistry.register(this.registry);
     }
 
 
@@ -99,14 +94,10 @@ public class MemcachedMetrics implements AutoCloseable {
 
     @Override
     public void close() {
-        // TODO: Not sure if all those clear on collector are necessary
-        // but as I found no information in prometheus regarding if it keeps some references
-        // So let be safe, and clean everything
+        // FIXME we should remove only metrics with the labels cluster=clustername, bucket=bucketName
         UP.clear();
         LATENCY.clear();
         STATS.clear();
         STATSITEMS.clear();
-        registry.clear();
-        MetaCollectorRegistry.metaRegistry.unregister(registry);
     }
 }
