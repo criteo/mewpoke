@@ -121,7 +121,7 @@ public class CouchbaseMonitor implements AutoCloseable {
         CouchbaseCluster client = null;
         Bucket bucket = null;
         try {
-            CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
+            final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
             bucket = client.openBucket(service.getBucketName());
             return Optional.of(new CouchbaseMonitor(service.getBucketName(), client, bucket, timeoutInMs, username, password, bucketStats));
@@ -154,7 +154,7 @@ public class CouchbaseMonitor implements AutoCloseable {
         try {
             final JsonArray clusterNodesStats = this.clusterManager.info().raw().getArray("nodes");
             clusterNodesStats.forEach(n -> {
-                JsonObject node = ((JsonObject) n);
+                final JsonObject node = ((JsonObject) n);
                 String hostname = node.getString("hostname");
                 nodesMembership.put(new InetSocketAddress(hostname.substring(0, hostname.indexOf(':')), 8091), node.getString("clusterMembership"));
             });
@@ -189,27 +189,29 @@ public class CouchbaseMonitor implements AutoCloseable {
             }
 
             final Map<String, Double> MapStr = new HashMap<>();
-            JsonNode hot_keys = jsonBucketStatsNode.findValue("hot_keys");
+            final JsonNode hot_keys = jsonBucketStatsNode.findValue("hot_keys");
             for (int i = 0; i < Math.min(hot_keys.size(), 3); i++) {
-                String key = "hot_keys." + i;
+                final String key = "hot_keys." + i;
                 try {
-                    JsonNode hot_key = hot_keys.get(i);
-                    double value = hot_key.get("ops").asDouble();
+                    final JsonNode hot_key = hot_keys.get(i);
+                    final double value = hot_key.get("ops").asDouble();
                     MapStr.put(key, value);
                 } catch (Exception e) {
                     logger.error("Cannot find a metric convertible to double value for {}, stat {}", ipaddr, key, e);
                 }
             }
+
+            // We extract all configured stats, or ALL stats.
             if (couchbasestats.getBucket() == null) {
-                Iterator<Map.Entry<String, JsonNode>> Iterator = jsonBucketStatsNode.get("op").get("samples").fields();
-                while (Iterator.hasNext()) {
-                    Map.Entry<String, JsonNode> field = Iterator.next();
+                final Iterator<Map.Entry<String, JsonNode>> fields = jsonBucketStatsNode.get("op").get("samples").fields();
+                while (fields.hasNext()) {
+                    final Map.Entry<String, JsonNode> field = fields.next();
                     try {
                         final double value = field.getValue().get(0).asDouble();
+                        MapStr.put(field.getKey(), value);
                     } catch (Exception e) {
                         logger.error("Cannot find a metric convertible to double value for {}, stat {}", ipaddr, field.getKey(), e);
                     }
-                    MapStr.put(field.getKey(), field.getValue().get(0).asDouble());
                 }
             } else {
                 for (String statname : couchbasestats.getBucket()) {
@@ -229,7 +231,6 @@ public class CouchbaseMonitor implements AutoCloseable {
     public Map<String, Map<String, Double>> collectApiStatsBucketXdcr() {
         final ClusterApiClient api = this.clusterManager.apiClient();
         final ObjectMapper objectMapper = new ObjectMapper();
-
         final String xdcrUri = "/pools/default/buckets/@xdcr-" + this.bucket.name() + "/stats";
         final JsonNode jsonBucketStatsXdcr;
         try {
@@ -270,12 +271,13 @@ public class CouchbaseMonitor implements AutoCloseable {
             final String xdcrStatPrefix = "replications/" + remoteClusterUuid + "/" + srcBucketName + "/" + dstBucketName + "/";
             final Map<String, Double> mapStats = new HashMap<>();
             if (couchbasestats.getXdcr() == null) {
-                Iterator<Map.Entry<String, JsonNode>> Iterator = jsonBucketStatsXdcr.get("op").get("samples").fields();
-                while (Iterator.hasNext()) {
-                    Map.Entry<String, JsonNode> field = Iterator.next();
+                final Iterator<Map.Entry<String, JsonNode>> fields = jsonBucketStatsXdcr.get("op").get("samples").fields();
+                while (fields.hasNext()) {
+                    final Map.Entry<String, JsonNode> field = fields.next();
                     try {
+                        final String statname = field.getKey().substring(field.getKey().lastIndexOf('/') + 1);
                         final double value = field.getValue().get(0).asDouble();
-                        mapStats.put(field.getKey().substring(field.getKey().lastIndexOf('/') + 1), value);
+                        mapStats.put(statname, value);
                     } catch (Exception e) {
                         logger.error("Cannot find an XDCR metric convertible to double value for bucket {}, stat {}", srcBucketName, field.getKey(), e);
                     }
@@ -302,12 +304,12 @@ public class CouchbaseMonitor implements AutoCloseable {
         return availabilityFrozen;
     }
 
-    public Map<InetSocketAddress, Long> collectPersistToDiskLatencies() {
+    public Map<InetSocketAddress, Long> collectLatencies(PersistTo persistTo, ReplicateTo replicateTo) {
         Observable
                 .from(docs)
                 .flatMap(doc -> {
-                    long start = System.nanoTime();
-                    Tuple2<Observable<Document>, UpsertRequest> ret = bucket.async().upsertWithRequest(doc, PersistTo.MASTER, ReplicateTo.NONE);
+                    final long start = System.nanoTime();
+                    Tuple2<Observable<Document>, UpsertRequest> ret = bucket.async().upsertWithRequest(doc, persistTo, replicateTo);
                     return ret.value1()
                             .timeout(timeoutInMs, TimeUnit.MILLISECONDS)
                             .onErrorReturn(e -> null)
@@ -322,6 +324,10 @@ public class CouchbaseMonitor implements AutoCloseable {
                 .firstOrDefault(null);
 
         return setLatenciesFrozen;
+    }
+
+    public Map<InetSocketAddress, Long> collectPersistToDiskLatencies() {
+        return collectLatencies(PersistTo.MASTER, ReplicateTo.NONE);
     }
 
     @Override
