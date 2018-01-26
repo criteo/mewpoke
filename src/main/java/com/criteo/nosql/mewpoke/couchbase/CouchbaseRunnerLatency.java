@@ -15,9 +15,9 @@ public class CouchbaseRunnerLatency extends CouchbaseRunnerAbstract {
 
     @Override
     public void poke() {
-        this.monitors.entrySet().parallelStream().forEach(client -> {
-            final Service service = client.getKey();
-            final Optional<CouchbaseMonitor> monitor = client.getValue();
+        this.monitors.entrySet().parallelStream().forEach(entry -> {
+            final Service service = entry.getKey();
+            final Optional<CouchbaseMonitor> monitor = entry.getValue();
             final CouchbaseMetrics metric = this.metrics.get(service);
             metric.updateDiskLatency(monitor.map(CouchbaseMonitor::collectPersistToDiskLatencies).orElse(Collections.emptyMap()));
             metric.updateAvailability(monitor.map(CouchbaseMonitor::collectAvailability).orElse(Collections.emptyMap()));
