@@ -113,7 +113,7 @@ public class MemcachedMonitor implements AutoCloseable {
                 String slabsStatsByRange = builder.append(slabType)
                         .append(":[")
                         .append(slabMinSize.intValue())
-                        .append("B - ")
+                        .append("B-")
                         .append(slabMaxSize.intValue())
                         .append("B]:")
                         .append(slabsStatsByIds.split(":")[2])
