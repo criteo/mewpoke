@@ -48,11 +48,11 @@ public class ConsulDiscovery implements IDiscovery {
     }
 
     public static String getClusterName(final HealthService.Service service) {
-        return getFromTags(service, "cluster=");
+        return getFromTags(service, "cluster-");
     }
 
     public static String getBucketName(final HealthService.Service service) {
-        return getFromTags(service, "bucket=");
+        return getFromTags(service, "bucket-");
     }
 
     private Map<Service, Set<InetSocketAddress>> getServicesNodesForImpl(List<String> tags) {
