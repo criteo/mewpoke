@@ -31,6 +31,7 @@ Mewpoke get all infos from his configuration's file ```config.yml```
 - `timeoutInSec`: timeout for service requests
 - `username`: Couchbase username
 - `password`: Couchbase password
+- `bucketpassword`: bucket's password specified in the "Access Control" part of Bucket settings (all buckets within the cluster should have the same password / this feature will disable latency metrics)
 
 ## couchbaseStats
 - `bucket`: list all bucket stats exported (if empty, will export all metrics)
