@@ -113,20 +113,27 @@ public class CouchbaseMonitor implements AutoCloseable {
         return new InetSocketAddress(n.hostname().hostname(), 8091);
     }
 
-    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs, String username, String password, Config.CouchbaseStats bucketStats) {
+    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, Config config) {
         if (endPoints.isEmpty()) {
             return Optional.empty();
         }
+
+        final Config.CouchbaseStats bucketStats = config.getCouchbaseStats();
+        final String bucketpassword = config.getService().getBucketpassword();
+        final long timeoutInMs = config.getService().getTimeoutInSec() * 1000L;
+        final String username = config.getService().getUsername();
+        final String password = config.getService().getPassword();
+        final String bucketName = service.getBucketName();
 
         CouchbaseCluster client = null;
         Bucket bucket = null;
         try {
             final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
-            bucket = client.openBucket(service.getBucketName());
-            return Optional.of(new CouchbaseMonitor(service.getBucketName(), client, bucket, timeoutInMs, username, password, bucketStats));
+            bucket = client.openBucket(bucketName,bucketpassword);
+            return Optional.of(new CouchbaseMonitor(bucketName, client, bucket, timeoutInMs, username, password, bucketStats));
         } catch (Exception e) {
-            logger.error("Cannot create couchbase client for {}", service.getBucketName(), e);
+            logger.error("Cannot create couchbase client for {}", bucketName, e);
             if (client != null) client.disconnect();
             if (bucket != null) bucket.close();
             return Optional.empty();
