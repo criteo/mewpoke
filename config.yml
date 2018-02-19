@@ -22,6 +22,7 @@ service:
   timeoutInSec: 60
   username: Administrator
   password: password
+  #bucketpassword: password
 
 couchbaseStats:
   bucket: # API : /pools/default/buckets/MYBUCKET/nodes/MYNODE:PORT/stats

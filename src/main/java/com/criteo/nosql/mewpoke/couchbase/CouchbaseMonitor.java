@@ -113,17 +113,19 @@ public class CouchbaseMonitor implements AutoCloseable {
         return new InetSocketAddress(n.hostname().hostname(), 8091);
     }
 
-    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs, String username, String password, Config.CouchbaseStats bucketStats) {
+    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, long timeoutInMs, String username, String password, Config config) {
         if (endPoints.isEmpty()) {
             return Optional.empty();
         }
 
+        Config.CouchbaseStats bucketStats = config.getCouchbaseStats();
+        String bucketpassword = config.getService().getBucketpassword();
         CouchbaseCluster client = null;
         Bucket bucket = null;
         try {
             final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
-            bucket = client.openBucket(service.getBucketName());
+            bucket = client.openBucket(service.getBucketName(),bucketpassword);
             return Optional.of(new CouchbaseMonitor(service.getBucketName(), client, bucket, timeoutInMs, username, password, bucketStats));
         } catch (Exception e) {
             logger.error("Cannot create couchbase client for {}", service.getBucketName(), e);

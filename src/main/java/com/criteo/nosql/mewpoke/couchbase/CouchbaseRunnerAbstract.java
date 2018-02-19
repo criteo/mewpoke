@@ -119,11 +119,12 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         final String username = cfg.getService().getUsername();
         final String password = cfg.getService().getPassword();
         final Config.CouchbaseStats cbStats = cfg.getCouchbaseStats();
+        final Config config = cfg;
         new_services.forEach((service, new_addresses) -> {
             if (!Objects.equals(services.get(service), new_addresses)) {
                 logger.info("A new Monitor for {} will be created.", service);
                 monitors.put(service, CouchbaseMonitor.fromNodes(service, new_addresses, timeoutInMs,
-                        username, password, cbStats));
+                        username, password, config));
                 metrics.put(service, new CouchbaseMetrics(service));
             }
         });
