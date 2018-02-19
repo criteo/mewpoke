@@ -80,7 +80,7 @@ public class ConsulDiscovery implements IDiscovery {
                     .forEach(hsrv -> {
                         logger.debug("{}", hsrv.getNode());
                         nodes.add(new InetSocketAddress(hsrv.getNode().getAddress(), hsrv.getService().getPort()));
-                        srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()));
+                        srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()),null); // we suppose bucket password is null with this discovery
                     });
             if (nodes.size() > 0) {
                 servicesNodes.put(srv[0], nodes);

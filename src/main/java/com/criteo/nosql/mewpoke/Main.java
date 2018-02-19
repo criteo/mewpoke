@@ -78,7 +78,7 @@ public class Main {
         }
         if (staticCfg != null) {
             logger.info("Static Couchbase discovery will be used");
-            return new CouchbaseDiscovery(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername());
+            return new CouchbaseDiscovery(cfg.getService().getUsername(), cfg.getService().getPassword(), staticCfg.getHost(), staticCfg.getClustername(), staticCfg.getBucketpassword());
         }
         logger.error("Bad configuration, no discovery was provided");
         throw new IllegalArgumentException("Bad configuration, no discovery was provided");

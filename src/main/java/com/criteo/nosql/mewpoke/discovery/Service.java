@@ -3,11 +3,12 @@ package com.criteo.nosql.mewpoke.discovery;
 public class Service {
     protected final String clusterName;
     protected final String bucketName;
+    protected final String bucketPassword;
 
-
-    public Service(String clusterName, String bucketName) {
+    public Service(String clusterName, String bucketName, String bucketPassword) {
         this.clusterName = clusterName;
         this.bucketName = bucketName;
+        this.bucketPassword = bucketPassword;
     }
 
     public String getClusterName() {
@@ -16,6 +17,10 @@ public class Service {
 
     public String getBucketName() {
         return bucketName;
+    }
+
+    public String getBucketPassword() {
+        return bucketPassword;
     }
 
     @Override

@@ -22,12 +22,14 @@ public class CouchbaseDiscovery implements IDiscovery {
     private final String username;
     private final String password;
     private final String clustername;
+    private final String bucketpassword;
 
-    public CouchbaseDiscovery(String username, String password, String host, String clusterName) {
+    public CouchbaseDiscovery(String username, String password, String host, String clusterName, String bucketPassword) {
         this.username = username;
         this.password = password;
         this.host = host;
         this.clustername = clusterName;
+        this.bucketpassword = bucketPassword;
     }
 
     /**
@@ -46,7 +48,7 @@ public class CouchbaseDiscovery implements IDiscovery {
 
             buckets.forEach(b -> {
                 final String bucketname = b.name();
-                final Service srv = new Service(clustername, bucketname);
+                final Service srv = new Service(clustername, bucketname, bucketpassword);
                 final Set<InetSocketAddress> nodes = new HashSet<>();
                 final BucketSettings bucketsettings = clusterManager.getBucket(bucketname);
 

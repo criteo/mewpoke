@@ -89,6 +89,7 @@ public final class Config {
     public static class StaticDiscovery {
         private String clustername;
         private String host;
+        private String bucketpassword;
 
         public String getClustername() {
             return clustername;
@@ -96,6 +97,10 @@ public final class Config {
 
         public String getHost() {
             return host;
+        }
+
+        public String getBucketpassword() {
+            return bucketpassword;
         }
     }
 

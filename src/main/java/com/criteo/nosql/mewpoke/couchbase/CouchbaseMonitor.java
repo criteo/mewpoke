@@ -123,7 +123,7 @@ public class CouchbaseMonitor implements AutoCloseable {
         try {
             final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
-            bucket = client.openBucket(service.getBucketName());
+            bucket = client.openBucket(service.getBucketName(),service.getBucketPassword());
             return Optional.of(new CouchbaseMonitor(service.getBucketName(), client, bucket, timeoutInMs, username, password, bucketStats));
         } catch (Exception e) {
             logger.error("Cannot create couchbase client for {}", service.getBucketName(), e);
