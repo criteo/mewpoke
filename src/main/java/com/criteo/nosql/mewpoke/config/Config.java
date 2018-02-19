@@ -123,6 +123,7 @@ public final class Config {
         private List<String> tags;
         private String username;
         private String password;
+        private String bucketpassword;
 
         public String getType() {
             return type;
@@ -142,6 +143,10 @@ public final class Config {
 
         public String getPassword() {
             return password;
+        }
+
+        public String getBucketpassword() {
+            return bucketpassword;
         }
     }
 }
