@@ -19,6 +19,7 @@ public class Main {
     private static final Logger logger = LoggerFactory.getLogger(Main.class);
 
     public static void main(String[] args) throws Exception {
+
         // Get the configuration
         final Config cfg;
         try {
@@ -72,9 +73,7 @@ public class Main {
         final Config.StaticDiscovery staticCfg = cfg.getDiscovery().getStaticDns();
         if (consulCfg != null) {
             logger.info("Consul discovery will be used");
-            return new ConsulDiscovery(consulCfg.getHost(), consulCfg.getPort(),
-                    consulCfg.getTimeoutInSec(), consulCfg.getReadConsistency(),
-                    consulCfg.getTags());
+            return new ConsulDiscovery(consulCfg);
         }
         if (staticCfg != null) {
             logger.info("Static Couchbase discovery will be used");

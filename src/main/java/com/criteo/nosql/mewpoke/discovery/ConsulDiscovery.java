@@ -1,5 +1,6 @@
 package com.criteo.nosql.mewpoke.discovery;
 
+import com.criteo.nosql.mewpoke.config.Config;
 import com.ecwid.consul.v1.ConsistencyMode;
 import com.ecwid.consul.v1.ConsulClient;
 import com.ecwid.consul.v1.QueryParams;
@@ -22,6 +23,7 @@ import static java.util.stream.Collectors.toList;
  */
 public class ConsulDiscovery implements IDiscovery {
     private static final Logger logger = LoggerFactory.getLogger(ConsulDiscovery.class);
+
     private static final String MAINTENANCE_MODE = "_node_maintenance";
 
     private final String host;
@@ -31,12 +33,12 @@ public class ConsulDiscovery implements IDiscovery {
     private final List<String> tags;
     private final ExecutorService executor;
 
-    public ConsulDiscovery(final String host, final int port, final int timeout, final String readConsistency, final List<String> tags) {
-        this.host = host;
-        this.port = port;
-        this.timeout = timeout;
-        this.params = new QueryParams(ConsistencyMode.valueOf(readConsistency));
-        this.tags = tags;
+    public ConsulDiscovery(final Config.ConsulDiscovery consulCfg) {
+        this.host = consulCfg.getHost();
+        this.port = consulCfg.getPort();
+        this.timeout = consulCfg.getTimeoutInSec();
+        this.params = new QueryParams(ConsistencyMode.valueOf(consulCfg.getReadConsistency()));
+        this.tags = consulCfg.getTags();
         this.executor = Executors.newSingleThreadExecutor(new ThreadFactoryBuilder().setNameFormat("consul-%d").build());
     }
 
@@ -93,6 +95,7 @@ public class ConsulDiscovery implements IDiscovery {
     /**
      * Look in Consul for all services matching one of the tags
      * The function filter out nodes that are in maintenance mode
+     *
      * @return the map nodes by services
      */
     // All this mumbo-jumbo with the executor is done only because the consul client does not expose
@@ -105,11 +108,9 @@ public class ConsulDiscovery implements IDiscovery {
         try {
             fServices = executor.submit(() -> {
                 logger.info("Fetching services for tag {} ", tags);
-                long start = System.currentTimeMillis();
-
-                Map<Service, Set<InetSocketAddress>> services = getServicesNodesForImpl(tags);
-
-                long stop = System.currentTimeMillis();
+                final long start = System.currentTimeMillis();
+                final Map<Service, Set<InetSocketAddress>> services = getServicesNodesForImpl(tags);
+                final long stop = System.currentTimeMillis();
                 logger.info("Fetching services for tag {} took {} ms", tags, stop - start);
                 return services;
             });
