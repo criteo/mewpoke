@@ -2,6 +2,7 @@ package com.criteo.nosql.mewpoke.config;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -59,21 +60,21 @@ public final class Config {
     }
 
     public static class ConsulDiscovery {
-        private String host;
-        private Integer port;
-        private Integer timeoutInSec;
-        private String readConsistency;
-        private List<String> tags;
+        private String host = "localhost";
+        private int port = 8500;
+        private int timeoutInSec = 10;
+        private String readConsistency = "STALE";
+        private List<String> tags = Collections.EMPTY_LIST;
 
         public String getHost() {
             return host;
         }
 
-        public Integer getPort() {
+        public int getPort() {
             return port;
         }
 
-        public Integer getTimeoutInSec() {
+        public int getTimeoutInSec() {
             return timeoutInSec;
         }
 
