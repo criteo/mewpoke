@@ -16,29 +16,29 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
  * TODO (r.gerard): Improve the class, add substructure for consul and services instead of Map<String,String>
  */
 public final class Config {
+
     public static final String DEFAULT_PATH = "config.yml";
 
     private Map<String, String> app;
-    private Service service;
     private Discovery discovery;
+    private Service service;
     private CouchbaseStats couchbaseStats;
 
     public static Config fromFile(final String filePath) throws IOException {
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
-        final Config cfg = mapper.readValue(new File(filePath), Config.class);
-        return cfg;
+        return mapper.readValue(new File(filePath), Config.class);
     }
 
-    public Service getService() {
-        return service;
+    public Map<String, String> getApp() {
+        return app;
     }
 
     public Discovery getDiscovery() {
         return discovery;
     }
 
-    public Map<String, String> getApp() {
-        return app;
+    public Service getService() {
+        return service;
     }
 
     public CouchbaseStats getCouchbaseStats() {
@@ -102,11 +102,6 @@ public final class Config {
     public static class Discovery {
         private ConsulDiscovery consul;
         private StaticDiscovery staticDns;
-        private Long refreshEveryMin; // FIXME. keep it a while for compat
-
-        public Long getRefreshEveryMin() {
-            return refreshEveryMin;
-        }
 
         public ConsulDiscovery getConsul() {
             return consul;
@@ -120,7 +115,6 @@ public final class Config {
     public static class Service {
         private String type;
         private long timeoutInSec;
-        private List<String> tags;
         private String username;
         private String password;
         private String bucketpassword;
@@ -131,10 +125,6 @@ public final class Config {
 
         public long getTimeoutInSec() {
             return timeoutInSec;
-        }
-
-        public List<String> getTags() {
-            return tags;
         }
 
         public String getUsername() {
