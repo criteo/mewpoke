@@ -10,11 +10,11 @@ discovery:
 #    timeoutInSec: 10
 #    readConsistency: STALE
 #    tags:
-#     - couchbase-memcached
-#     - cluster=CLUSTERNAME
-#     - bucket=BUCKETNAME
+#      - couchbase-memcached
+#      - cluster-CLUSTERNAME
+#      - bucket-BUCKETNAME
   staticDns:
-    clustername: cluster01
+    clustername: mycluster
     host: localhost
 
 service:
@@ -26,15 +26,15 @@ service:
 
 couchbaseStats:
   bucket: # API : /pools/default/buckets/MYBUCKET/nodes/MYNODE:PORT/stats
-     - ep_mem_high_wat
-     - vb_active_resident_items_ratio
-     - vb_replica_resident_items_ratio
-     - ep_mem_low_wat
-     - ep_diskqueue_items
-     - ep_oom_errors
-     - ep_tmp_oom_errors
-     - ep_max_size
+    - ep_mem_high_wat
+    - vb_active_resident_items_ratio
+    - vb_replica_resident_items_ratio
+    - ep_mem_low_wat
+    - ep_diskqueue_items
+    - ep_oom_errors
+    - ep_tmp_oom_errors
+    - ep_max_size
   xdcr: # API: replications/XDCR_UUID/MYBUCKET_SOURCE/MYBUCKET_DESTINATION/
-     - bandwidth_usage
-     - percent_completeness
-     - changes_left
+    - bandwidth_usage
+    - percent_completeness
+    - changes_left
