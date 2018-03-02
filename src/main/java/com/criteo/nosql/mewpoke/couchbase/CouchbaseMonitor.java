@@ -42,8 +42,10 @@ import java.util.stream.Collectors;
 public class CouchbaseMonitor implements AutoCloseable {
     private static Logger logger = LoggerFactory.getLogger(CouchbaseMonitor.class);
     private static AtomicReference<CouchbaseEnvironment> couchbaseEnv = new AtomicReference<>(null);
+
     private final String serviceName;
-    private final Config.CouchbaseStats couchbasestats;
+    private final List<String> bucketStatsNames;
+    private final List<String> xdcrStatsNames;
 
     private final CouchbaseCluster client;
     private final long timeoutInMs;
@@ -68,13 +70,14 @@ public class CouchbaseMonitor implements AutoCloseable {
     private final NodeLocatorHelper locator;
     private final ClusterManager clusterManager;
 
-    private CouchbaseMonitor(String serviceName, CouchbaseCluster client, Bucket bucket, long timeoutInMs, String username, String password, Config.CouchbaseStats couchbasestats) throws NoSuchFieldException, IllegalAccessException {
+    private CouchbaseMonitor(String serviceName, CouchbaseCluster client, Bucket bucket, long timeoutInMs, String username, String password, List<String> bucketStatsNames, List<String> xdcrStatsNames) throws NoSuchFieldException, IllegalAccessException {
         this.serviceName = serviceName;
         this.client = client;
         this.bucket = bucket;
         this.clusterManager = client.clusterManager(username, password);
         this.timeoutInMs = timeoutInMs;
-        this.couchbasestats = couchbasestats;
+        this.bucketStatsNames = bucketStatsNames;
+        this.xdcrStatsNames = xdcrStatsNames;
 
         final CouchbaseCore c = ((CouchbaseCore) bucket.core());
 
@@ -118,20 +121,21 @@ public class CouchbaseMonitor implements AutoCloseable {
             return Optional.empty();
         }
 
-        final Config.CouchbaseStats bucketStats = config.getCouchbaseStats();
         final String bucketpassword = config.getService().getBucketpassword();
         final long timeoutInMs = config.getService().getTimeoutInSec() * 1000L;
         final String username = config.getService().getUsername();
         final String password = config.getService().getPassword();
         final String bucketName = service.getBucketName();
+        final List<String> bucketStatsNames = (List<String>)config.getService().getProperties().get("bucket");
+        final List<String> xdcrStatsNames = (List<String>)config.getService().getProperties().get("xdrc");
 
         CouchbaseCluster client = null;
         Bucket bucket = null;
         try {
             final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
-            bucket = client.openBucket(bucketName,bucketpassword);
-            return Optional.of(new CouchbaseMonitor(bucketName, client, bucket, timeoutInMs, username, password, bucketStats));
+            bucket = client.openBucket(bucketName, bucketpassword);
+            return Optional.of(new CouchbaseMonitor(bucketName, client, bucket, timeoutInMs, username, password, bucketStatsNames, xdcrStatsNames));
         } catch (Exception e) {
             logger.error("Cannot create couchbase client for {}", bucketName, e);
             if (client != null) client.disconnect();
@@ -208,8 +212,9 @@ public class CouchbaseMonitor implements AutoCloseable {
                 }
             }
 
-            // We extract all configured stats, or ALL stats.
-            if (couchbasestats.getBucket() == null) {
+            // We extract only configured stats. If undefined, we extract ALL stats.
+            // TODO: I would prefer a default to empty list. And use pattern matching to allow to configure ALL easily
+            if (bucketStatsNames == null) {
                 final Iterator<Map.Entry<String, JsonNode>> fields = jsonBucketStatsNode.get("op").get("samples").fields();
                 while (fields.hasNext()) {
                     final Map.Entry<String, JsonNode> field = fields.next();
@@ -221,7 +226,7 @@ public class CouchbaseMonitor implements AutoCloseable {
                     }
                 }
             } else {
-                for (String statname : couchbasestats.getBucket()) {
+                for (String statname : bucketStatsNames) {
                     try {
                         final double value = jsonBucketStatsNode.findValue(statname).get(0).asDouble();
                         MapStr.put(statname, value);
@@ -277,7 +282,10 @@ public class CouchbaseMonitor implements AutoCloseable {
             final String dstBucketName = this.bucket.name();
             final String xdcrStatPrefix = "replications/" + remoteClusterUuid + "/" + srcBucketName + "/" + dstBucketName + "/";
             final Map<String, Double> mapStats = new HashMap<>();
-            if (couchbasestats.getXdcr() == null) {
+
+            // We extract only configured stats. If undefined, we extract ALL stats.
+            // TODO: I would prefer a default to empty list. And use pattern matching to allow to configure ALL easily
+            if (xdcrStatsNames == null) {
                 final Iterator<Map.Entry<String, JsonNode>> fields = jsonBucketStatsXdcr.get("op").get("samples").fields();
                 while (fields.hasNext()) {
                     final Map.Entry<String, JsonNode> field = fields.next();
@@ -290,7 +298,7 @@ public class CouchbaseMonitor implements AutoCloseable {
                     }
                 }
             } else {
-                for (String statname : couchbasestats.getXdcr()) {
+                for (String statname : xdcrStatsNames) {
                     try {
                         final double value = jsonBucketStatsXdcr.findValue(xdcrStatPrefix + statname).get(0).asDouble();
                         mapStats.put(statname, value);
