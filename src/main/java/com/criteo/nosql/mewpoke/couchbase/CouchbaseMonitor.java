@@ -117,18 +117,18 @@ public class CouchbaseMonitor implements AutoCloseable {
         return new InetSocketAddress(n.hostname().hostname(), httpDirectPort);
     }
 
-    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, Config config) {
+    public static Optional<CouchbaseMonitor> fromNodes(final Service service, Set<InetSocketAddress> endPoints, Config.Service serviceCfg) {
         if (endPoints.isEmpty()) {
             return Optional.empty();
         }
 
-        final String bucketpassword = config.getService().getBucketpassword();
-        final long timeoutInMs = config.getService().getTimeoutInSec() * 1000L;
-        final String username = config.getService().getUsername();
-        final String password = config.getService().getPassword();
+        final long timeoutInMs = serviceCfg.getTimeoutInSec() * 1000L;
+        final String username = serviceCfg.getUsername();
+        final String password = serviceCfg.getPassword();
         final String bucketName = service.getBucketName();
-        final List<String> bucketStatsNames = config.getCouchbaseStats().getBucket();
-        final List<String> xdcrStatsNames = config.getCouchbaseStats().getXdcr();
+        final String bucketPassword = serviceCfg.getBucketPassword();
+        final List<String> bucketStatsNames = (List<String>)serviceCfg.getProperties().get("bucket");
+        final List<String> xdcrStatsNames = (List<String>)serviceCfg.getProperties().get("xdcr");
 
         CouchbaseCluster client = null;
         Bucket bucket = null;
@@ -136,7 +136,7 @@ public class CouchbaseMonitor implements AutoCloseable {
             final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             final int httpDirectPort = env.bootstrapHttpDirectPort();
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
-            bucket = client.openBucket(bucketName, bucketpassword);
+            bucket = client.openBucket(bucketName, bucketPassword);
             return Optional.of(new CouchbaseMonitor(bucketName, client, bucket, httpDirectPort, timeoutInMs, username, password, bucketStatsNames, xdcrStatsNames));
         } catch (Exception e) {
             logger.error("Cannot create couchbase client for {}", bucketName, e);

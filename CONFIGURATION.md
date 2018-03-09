@@ -31,9 +31,10 @@ Mewpoke get all infos from his configuration's file ```config.yml```
 - `timeoutInSec`: timeout for service requests
 - `username`: Couchbase username
 - `password`: Couchbase password
-- `bucketpassword`: bucket's password specified in the "Access Control" part of Bucket settings (all buckets within the cluster should have the same password). This feature will disable dedicated port used by Memcached driver for set/get. So latency won't be available.
+- `bucketPassword`: bucket's password specified in the "Access Control" part of Bucket settings (all buckets within the cluster should have the same password). This feature will disable dedicated port used by Memcached driver for set/get. So latency won't be available.
+- `properties`: additional properties, specific to the service
 
-## couchbaseStats
+## couchbaseStats properties
 - `bucket`: list all bucket stats exported (if empty, will export all metrics)
 - `xdcr`: list all xdcr stats exported (if empty, will export all metrics)
 
@@ -60,8 +61,7 @@ service:
   timeoutInSec: 60
   username: Administrator
   password: password
-
-couchbaseStats:
+  properties:
     bucket:
     xdcr:
 ```

@@ -13,7 +13,6 @@ service:
   timeoutInSec: 60
   username: Administrator
   password: password
-
-couchbaseStats:
-  bucket: # API : /pools/default/buckets/MYBUCKET/nodes/MYNODE:PORT/stats
-  xdcr: # API: replications/XDCR_UUID/MYBUCKET_SOURCE/MYBUCKET_DESTINATION/
+  properties:
+    bucket: # API : /pools/default/buckets/MYBUCKET/nodes/MYNODE:PORT/stats
+    xdcr: # API: replications/XDCR_UUID/MYBUCKET_SOURCE/MYBUCKET_DESTINATION/

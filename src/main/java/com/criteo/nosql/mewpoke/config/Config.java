@@ -3,6 +3,7 @@ package com.criteo.nosql.mewpoke.config;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -23,7 +24,6 @@ public final class Config {
     private Map<String, String> app;
     private Discovery discovery;
     private Service service;
-    private CouchbaseStats couchbaseStats;
 
     public static Config fromFile(final String filePath) throws IOException {
         final ObjectMapper mapper = new ObjectMapper(new YAMLFactory());
@@ -40,23 +40,6 @@ public final class Config {
 
     public Service getService() {
         return service;
-    }
-
-    public CouchbaseStats getCouchbaseStats() {
-        return couchbaseStats;
-    }
-
-    public class CouchbaseStats {
-        private List<String> bucket;
-        private List<String> xdcr;
-
-        public List<String> getBucket() {
-            return bucket;
-        }
-
-        public List<String> getXdcr() {
-            return xdcr;
-        }
     }
 
     public static class ConsulDiscovery {
@@ -118,7 +101,8 @@ public final class Config {
         private long timeoutInSec;
         private String username;
         private String password;
-        private String bucketpassword;
+        private String bucketPassword;
+        private HashMap<String, Object> properties;
 
         public String getType() {
             return type;
@@ -136,8 +120,12 @@ public final class Config {
             return password;
         }
 
-        public String getBucketpassword() {
-            return bucketpassword;
+        public String getBucketPassword() {
+            return bucketPassword;
+        }
+
+        public Map<String, Object> getProperties() {
+            return properties;
         }
     }
 }

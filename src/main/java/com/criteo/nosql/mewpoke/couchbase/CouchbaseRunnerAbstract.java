@@ -118,7 +118,7 @@ public abstract class CouchbaseRunnerAbstract implements AutoCloseable, Runnable
         new_services.forEach((service, new_addresses) -> {
             if (!Objects.equals(services.get(service), new_addresses)) {
                 logger.info("A new Monitor for {} will be created.", service);
-                monitors.put(service, CouchbaseMonitor.fromNodes(service, new_addresses, cfg));
+                monitors.put(service, CouchbaseMonitor.fromNodes(service, new_addresses, cfg.getService()));
                 metrics.put(service, new CouchbaseMetrics(service));
             }
         });
