@@ -25,6 +25,7 @@ import com.criteo.nosql.mewpoke.config.Config;
 import com.criteo.nosql.mewpoke.discovery.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.NullNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import rx.Observable;
@@ -178,147 +179,119 @@ public class CouchbaseMonitor implements AutoCloseable {
         }
     }
 
-    public Map<InetSocketAddress, Map<String, Double>> collectApiStatsBucket() {
+    private JsonNode getFromApi(final String uri) {
         final ClusterApiClient api = this.clusterManager.apiClient();
         final ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            final RestApiResponse response = api.get(uri).execute();
+            final int statusCode = response.httpStatus().code();
+            if (statusCode / 100 == 2) {
+                return objectMapper.readTree(response.body());
+            } else {
+                final String reasonPhrase = response.httpStatus().reasonPhrase();
+                logger.error("Couchbase REST API request was not successful. URI '{}' returns {}. Reason is '{}'", uri, statusCode, reasonPhrase);
+                return NullNode.instance;
+            }
+        } catch (Exception e) {
+            logger.error("Couchbase REST API request failed. URI was '{}'.", uri, e);
+            return NullNode.instance;
+        }
+    }
+
+    public Map<InetSocketAddress, Map<String, Double>> collectApiStatsBucket() {
 
         for (Node n : getNodes()) {
             final String hostPort = nodeToInetAddress(n).toString().split("/")[1];
             final String uri = "/pools/default/buckets/" + this.bucket.name() + "/nodes/" + hostPort + "/stats";
-            final JsonNode jsonBucketStatsNode;
-            try {
-                final RestApiResponse response = api.get(uri).execute();
-                final int statusCode = response.httpStatus().code();
-                if (statusCode != 200) {
-                    final String reasonPhrase = response.httpStatus().reasonPhrase();
-                    logger.error("Couchbase REST API request was not successful. URI '{}' returns {}. Reason is '{}'", uri, statusCode, reasonPhrase);
-                    continue;
-                }
-
-                jsonBucketStatsNode = objectMapper.readTree(response.body());
-            } catch (Exception e) {
-                logger.error("Couchbase REST API request failed. URI was '{}'.", uri, e);
-                continue;
-            }
+            final JsonNode jsonBucketStatsNode = getFromApi(uri);
 
             final Map<String, Double> statsMap = new HashMap<>();
 
             final JsonNode hotKeys = jsonBucketStatsNode.findValue("hot_keys");
-            for (int i = 0; i < Math.min(hotKeys.size(), 3); i++) {
-                final String key = "hot_keys." + i;
-                try {
-                    final JsonNode hot_key = hotKeys.get(i);
-                    final double value = hot_key.get("ops").asDouble();
-                    statsMap.put(key, value);
-                } catch (Exception e) {
-                    logger.error("Failed to get hot keys for {}.", hostPort, e);
+            if (hotKeys != null) {
+                final int hotKeysCount = Math.min(hotKeys.size(), 3);
+                for (int i = 0; i < hotKeysCount; i++) {
+                    try {
+                        final String key = "hot_keys." + i;
+                        final double value = hotKeys.get(i).get("ops").asDouble();
+                        statsMap.put(key, value);
+                    } catch (Exception e) {
+                        logger.error("Failed to get hot keys for {}.", hostPort, e);
+                    }
                 }
             }
 
             // We extract only configured stats. If undefined, we extract ALL stats.
-            // TODO: I would prefer a default to empty list. And allow pattern matching to configure ALL easily (**)
-            final JsonNode samples = jsonBucketStatsNode.get("op").get("samples");
-            if (bucketStatsNames == null) {
+            final JsonNode samples = jsonBucketStatsNode.findValue("samples");
+            if (samples != null) {
                 final Iterator<Map.Entry<String, JsonNode>> fields = samples.fields();
                 while (fields.hasNext()) {
                     final Map.Entry<String, JsonNode> field = fields.next();
-                    try {
-                        final double value = field.getValue().get(0).asDouble();
-                        statsMap.put(field.getKey(), value);
-                    } catch (Exception e) {
-                        logger.error("Cannot fetch stat {} for bucket {} and node {}.", field.getKey(), this.bucket.name(), hostPort, e);
-                    }
-                }
-            } else {
-                for (String statName : bucketStatsNames) {
-                    try {
-                        final double value = samples.findValue(statName).get(0).asDouble();
-                        statsMap.put(statName, value);
-                    } catch (Exception e) {
-                        logger.error("Cannot fetch stat {} for bucket {} and node {}.", statName, this.bucket.name(), hostPort, e);
+                    final String statName = field.getKey();
+                    // TODO: I would prefer empty list as default. And allow pattern matching to configure ALL easily (**)
+                    if (bucketStatsNames == null || bucketStatsNames.contains(statName)) {
+                        try {
+                            final double value = field.getValue().get(0).asDouble();
+                            statsMap.put(statName, value);
+                        } catch (Exception e) {
+                            logger.error("Cannot fetch stat {} for bucket {} and node {}.", statName, this.bucket.name(), hostPort, e);
+                        }
                     }
                 }
             }
+
             nodesApiStats.put(nodeToInetAddress(n), statsMap);
         }
         return nodesApiStatsFrozen;
     }
 
     public Map<String, Map<String, Double>> collectApiStatsBucketXdcr() {
-        final ClusterApiClient api = this.clusterManager.apiClient();
-        final ObjectMapper objectMapper = new ObjectMapper();
-        final String xdcrUri = "/pools/default/buckets/@xdcr-" + this.bucket.name() + "/stats";
-        final JsonNode jsonBucketStatsXdcr;
-        try {
-            final RestApiResponse response = api.get(xdcrUri).execute();
-            final int statusCode = response.httpStatus().code();
-            if (statusCode != 200) {
-                final String reasonPhrase = response.httpStatus().reasonPhrase();
-                logger.error("Couchbase REST API request was not successful. URI '{}' returns {}. Reason is '{}'", xdcrUri, statusCode, reasonPhrase);
-                return Collections.emptyMap();
-            }
-            jsonBucketStatsXdcr = objectMapper.readTree(response.body());
-        } catch (Exception e) {
-            logger.error("Couchbase REST API request failed. URI was '{}'.", xdcrUri, e);
-            return Collections.emptyMap();
-        }
-        if (jsonBucketStatsXdcr.findValue("timestamp").size() == 0) {
+
+        final String uri = "/pools/default/buckets/@xdcr-" + this.bucket.name() + "/stats";
+        final JsonNode samples = getFromApi(uri).findValue("samples");
+        if (samples == null) {
             return Collections.emptyMap();
         }
 
-        final String remoteClustersUri = "/pools/default/remoteClusters";
-        final JsonNode jsonRemoteCluster;
-        try {
-            final RestApiResponse response = api.get(remoteClustersUri).execute();
-            final int statusCode = response.httpStatus().code();
-            if (statusCode != 200) {
-                final String reasonPhrase = response.httpStatus().reasonPhrase();
-                logger.error("Couchbase REST API request was not successful. URI '{}' returns {}. Reason is '{}'", remoteClustersUri, statusCode, reasonPhrase);
-                return Collections.emptyMap();
-            }
-            jsonRemoteCluster = objectMapper.readTree(response.body());
-        } catch (Exception e) {
-            logger.error("Couchbase REST API request failed. URI was '{}'.", remoteClustersUri, e);
-            return Collections.emptyMap();
-        }
+        final JsonNode remoteClusters = getFromApi("/pools/default/remoteClusters");
 
-        for (int i = 0; i < jsonRemoteCluster.size(); i++) { //We suppose bucket from remote and local cluster have same name
-            final String remoteClusterName = jsonRemoteCluster.get(i).findValue("name").asText();
-            // We assume that XDRC replication are between buckets with the same name
-            final String remoteClusterUuid = jsonRemoteCluster.get(i).findValue("uuid").asText();
+        // If a destination was removed, we clear XDCR stats
+        xdcrStats.entrySet().removeIf(entry -> !remoteClusters.findValues("name").contains(entry.getKey()));
+
+        for (JsonNode remoteCluster : remoteClusters) {
+            // We assume that XDRC replication are between buckets with the same name.
+            final String remoteClusterName = remoteCluster.findValue("name").asText();
+            final String remoteClusterUuid = remoteCluster.findValue("uuid").asText();
             final String srcBucketName = this.bucket.name();
             final String dstBucketName = this.bucket.name();
-            final String xdcrStatPrefix = "replications/" + remoteClusterUuid + "/" + srcBucketName + "/" + dstBucketName + "/";
+            final String prefix = "replications/" + remoteClusterUuid + "/" + srcBucketName + "/" + dstBucketName + "/";
+            final int prefixLen = prefix.length();
+
 
             final Map<String, Double> statsMap = new HashMap<>();
 
-            // We extract only configured stats. If undefined, we extract ALL stats.
-            // TODO: I would prefer a default to empty list. And allow pattern matching to configure ALL easily (**)
-            final JsonNode samples = jsonBucketStatsXdcr.get("op").get("samples");
-            if (xdcrStatsNames == null) {
-                final Iterator<Map.Entry<String, JsonNode>> fields = samples.fields();
-                while (fields.hasNext()) {
-                    final Map.Entry<String, JsonNode> field = fields.next();
-                    try {
-                        final String statName = field.getKey().substring(field.getKey().lastIndexOf('/') + 1);
-                        final double value = field.getValue().get(0).asDouble();
-                        statsMap.put(statName, value);
-                    } catch (Exception e) {
-                        logger.error("Cannot fetch XDCR stat {} for bucket {}.", field.getKey(), srcBucketName, e);
-                    }
-                }
-            } else {
-                for (String statName : xdcrStatsNames) {
-                    try {
-                        final double value = samples.findValue(xdcrStatPrefix + statName).get(0).asDouble();
-                        statsMap.put(statName, value);
-                    } catch (Exception e) {
-                        logger.error("Cannot fetch XDCR stat {} for bucket {}.", statName, srcBucketName, e);
+            final Iterator<Map.Entry<String, JsonNode>> fields = samples.fields();
+            while (fields.hasNext()) {
+                final Map.Entry<String, JsonNode> field = fields.next();
+                final String key = field.getKey();
+                if (key.startsWith(prefix)) {
+                    final String statName = key.substring(prefixLen);
+                    // We extract only configured stats. If undefined, we extract ALL stats.
+                    // TODO: I would prefer empty list as default. And allow pattern matching to configure ALL easily (**)
+                    if (xdcrStatsNames == null || xdcrStatsNames.contains(statName)) {
+                        try {
+                            final double value = field.getValue().get(0).asDouble();
+                            statsMap.put(statName, value);
+                        } catch (Exception e) {
+                            logger.error("Cannot fetch XDCR stat {} for bucket {}.", field.getKey(), srcBucketName, e);
+                        }
                     }
                 }
             }
+
             xdcrStats.put(remoteClusterName, statsMap);
         }
+
         return xdcrStatsFrozen;
     }
 
