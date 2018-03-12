@@ -23,7 +23,7 @@ gradle build
 ```
 Then deploy containers:
 ```sh
-cd docker
+cd tests
 docker-compose up -d
 ```
 
