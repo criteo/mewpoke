@@ -4,6 +4,10 @@ import com.criteo.nosql.mewpoke.config.Config;
 import com.ecwid.consul.v1.ConsistencyMode;
 import com.ecwid.consul.v1.ConsulClient;
 import com.ecwid.consul.v1.QueryParams;
+import com.ecwid.consul.v1.catalog.CatalogClient;
+import com.ecwid.consul.v1.catalog.CatalogConsulClient;
+import com.ecwid.consul.v1.health.HealthClient;
+import com.ecwid.consul.v1.health.HealthConsulClient;
 import com.ecwid.consul.v1.health.model.HealthService;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import org.slf4j.Logger;
@@ -57,26 +61,28 @@ public class ConsulDiscovery implements IDiscovery {
         return getFromTags(service, "bucket-");
     }
 
-    private Map<Service, Set<InetSocketAddress>> getServicesNodesForImpl(List<String> tags) {
-        final ConsulClient client = new ConsulClient(host, port);
-
-        final List<Map.Entry<String, List<String>>> services =
+    private Map<Service, Set<InetSocketAddress>> getServicesNodesByTags(final List<String> tags) {
+        final CatalogClient client = new CatalogConsulClient(host, port);
+        final List<String> serviceNames =
                 client.getCatalogServices(params).getValue().entrySet().stream()
                         .filter(entry -> !Collections.disjoint(entry.getValue(), tags))
-                        .map(entry -> {
-                            logger.info("Found service matching {}", entry.getKey());
-                            return entry;
-                        })
+                        .map(Map.Entry::getKey)
                         .collect(toList());
+        return getServicesNodesByServices(serviceNames);
+    }
 
-        final Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>(services.size());
-        for (Map.Entry<String, List<String>> service : services) {
+    private Map<Service, Set<InetSocketAddress>> getServicesNodesByServices(final List<String> serviceNames) {
+        final HealthClient client = new HealthConsulClient(host, port);
+        final Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>(serviceNames.size());
+        for (String serviceName : serviceNames) {
             final Set<InetSocketAddress> nodes = new HashSet<>();
             final Service[] srv = new Service[]{null};
-            client.getHealthServices(service.getKey(), false, params).getValue().stream()
+            client.getHealthServices(serviceName, false, params).getValue().stream()
+                    // TODO: we ignore nodes when an health check message starts with 'DISCARD'. It allows to ignore spare nodes for couchbase. It's flaky but don't have better; come propose me better.
+                    // TODO: When consul starts, all health checks failed with no message for X seconds. We choose to ignore these nodes. But the test hardcode our convention; come propose me better.
                     .filter(hsrv -> hsrv.getChecks().stream()
                             .noneMatch(check -> check.getCheckId().equalsIgnoreCase(MAINTENANCE_MODE)
-                                    || check.getOutput().startsWith("DISCARD:") // For couchbase, flaky but don't have better, come propose me better
+                                    || check.getOutput().startsWith("DISCARD:")
                                     || (check.getCheckId().startsWith("service:couchbase") && check.getOutput().isEmpty())
                             ))
                     .forEach(hsrv -> {
@@ -85,11 +91,11 @@ public class ConsulDiscovery implements IDiscovery {
                         srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()));
                     });
             if (nodes.size() > 0) {
+                logger.info("Found {} nodes for {}", nodes.size(), srv[0]);
                 servicesNodes.put(srv[0], nodes);
             }
         }
         return servicesNodes;
-
     }
 
     /**
@@ -102,14 +108,15 @@ public class ConsulDiscovery implements IDiscovery {
     // in any way a mean to timeout/cancel requests nor to properly shutdown/reset it.
     // Thus we play safe and wrap calls inside an executor that we can properly timeout, and a new consul client
     // is created each time.
+    // TODO: Consider to have one shared ConsulRawClient, configured with a custom httpClient/requestConfig
     @Override
-    public Map<Service, Set<InetSocketAddress>> getServicesNodesFor() {
+    public Map<Service, Set<InetSocketAddress>> getServicesNodes() {
         Future<Map<Service, Set<InetSocketAddress>>> fServices = null;
         try {
             fServices = executor.submit(() -> {
                 logger.info("Fetching services for tag {} ", tags);
                 final long start = System.currentTimeMillis();
-                final Map<Service, Set<InetSocketAddress>> services = getServicesNodesForImpl(tags);
+                final Map<Service, Set<InetSocketAddress>> services = getServicesNodesByTags(tags);
                 final long stop = System.currentTimeMillis();
                 logger.info("Fetching services for tag {} took {} ms", tags, stop - start);
                 return services;

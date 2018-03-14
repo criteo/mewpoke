@@ -21,13 +21,13 @@ public class CouchbaseDiscovery implements IDiscovery {
     private final String host;
     private final String username;
     private final String password;
-    private final String clustername;
+    private final String clusterName;
 
     public CouchbaseDiscovery(String username, String password, String host, String clusterName) {
         this.username = username;
         this.password = password;
         this.host = host;
-        this.clustername = clusterName;
+        this.clusterName = clusterName;
     }
 
     /**
@@ -35,7 +35,7 @@ public class CouchbaseDiscovery implements IDiscovery {
      * @return the map nodes by services
      */
     @Override
-    public Map<Service, Set<InetSocketAddress>> getServicesNodesFor() {
+    public Map<Service, Set<InetSocketAddress>> getServicesNodes() {
         CouchbaseCluster couchbaseCluster = null;
         try {
             couchbaseCluster = CouchbaseCluster.create(host);
@@ -45,18 +45,18 @@ public class CouchbaseDiscovery implements IDiscovery {
             final Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>();
 
             buckets.forEach(b -> {
-                final String bucketname = b.name();
-                final Service srv = new Service(clustername, bucketname);
+                final String bucketName = b.name();
+                final Service srv = new Service(clusterName, bucketName);
                 final Set<InetSocketAddress> nodes = new HashSet<>();
-                final BucketSettings bucketsettings = clusterManager.getBucket(bucketname);
+                final BucketSettings bucketsettings = clusterManager.getBucket(bucketName);
 
                 clusterNodes.forEach(n -> {
                     final String ipaddr = ((JsonObject) n).getString("hostname").split(":")[0];
                     final Integer port = bucketsettings.port();
                     if (port == 0){
-                        logger.error("Could not get dedicated port for bucket {}, latency won't work", bucketname);
+                        logger.error("Could not get dedicated port for bucket {}, latency measure won't work", bucketName);
                     }
-                    logger.debug("Node {} for bucket {}", ipaddr, bucketname);
+                    logger.debug("Node {} for bucket {}", ipaddr, bucketName);
                     nodes.add(new InetSocketAddress(ipaddr, port));
                 });
                 servicesNodes.put(srv, nodes);

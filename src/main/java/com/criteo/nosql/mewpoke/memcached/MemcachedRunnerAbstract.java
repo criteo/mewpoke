@@ -95,7 +95,7 @@ public abstract class MemcachedRunnerAbstract implements AutoCloseable, Runnable
     }
 
     public void updateTopology() {
-        final Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodesFor();
+        final Map<Service, Set<InetSocketAddress>> new_services = discovery.getServicesNodes();
 
         // Discovery down?
         if (new_services.isEmpty()) {
