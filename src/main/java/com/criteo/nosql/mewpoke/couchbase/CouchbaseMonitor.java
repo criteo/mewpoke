@@ -127,8 +127,10 @@ public class CouchbaseMonitor implements AutoCloseable {
         final String username = config.getService().getUsername();
         final String password = config.getService().getPassword();
         final String bucketName = service.getBucketName();
-        final List<String> bucketStatsNames = config.getCouchbaseStats().getBucket();
-        final List<String> xdcrStatsNames = config.getCouchbaseStats().getXdcr();
+        final List<String> bucketStatsNames = (config.getCouchbaseStats() != null ? config.getCouchbaseStats().getBucket()
+            : null);
+        final List<String> xdcrStatsNames = (config.getCouchbaseStats() != null ? config.getCouchbaseStats().getXdcr()
+            : null);
 
         CouchbaseCluster client = null;
         Bucket bucket = null;
