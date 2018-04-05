@@ -11,13 +11,13 @@ public class CouchbaseMetrics implements AutoCloseable {
 
     private static final Gauge UP = Gauge.build()
             .name("couchbase_up")
-            .help("Are the servers up?")
+            .help("Availability of a given bucket on a given Couchbase node")
             .labelNames("cluster", "bucket", "instance")
             .register();
 
     private static final Summary LATENCY = Summary.build()
             .name("couchbase_latency")
-            .help("latencies observed by instance and command")
+            .help("Disk persistence latency for a set operation")
             .labelNames("cluster", "bucket", "instance", "command")
             .maxAgeSeconds(5 * 60)
             .ageBuckets(5)
@@ -28,7 +28,7 @@ public class CouchbaseMetrics implements AutoCloseable {
 
     private static final Gauge OPERATIONS = Gauge.build()
             .name("couchbase_operations")
-            .help("Cluster ongoing operations")
+            .help("Ongoing rebalance operatio on the cluster")
             .labelNames("cluster", "operation")
             .register();
 
@@ -40,13 +40,13 @@ public class CouchbaseMetrics implements AutoCloseable {
 
     private static final Gauge STATS = Gauge.build()
             .name("couchbase_stats")
-            .help("Cluster API Stats")
+            .help("Couchbase specific stats that are listed in the config file in the couchbaseStats/bucket section")
             .labelNames("cluster", "bucket", "instance", "name")
             .register();
 
     private static final Gauge XDCR = Gauge.build()
             .name("couchbase_xdcr")
-            .help("Cluster API Stats XDCR")
+            .help("Couchbase replication stats that are listed in the config file in the couchbaseStats/xdcr section")
             .labelNames("cluster", "bucket", "remotecluster", "name")
             .register();
 

@@ -14,13 +14,13 @@ public class MemcachedMetrics implements AutoCloseable {
 
     private static final Gauge UP = Gauge.build()
             .name("memcached_up")
-            .help("Are the servers up?")
+            .help("Availability of a given bucket on a given Memcached node")
             .labelNames("cluster", "bucket", "instance")
             .register();
 
     private static final Summary LATENCY = Summary.build()
             .name("memcached_latency")
-            .help("latencies observed by instance and command")
+            .help("Get and Set latencies")
             .labelNames("cluster", "bucket", "instance", "command")
             .maxAgeSeconds(60)
             .ageBuckets(1)
@@ -31,13 +31,13 @@ public class MemcachedMetrics implements AutoCloseable {
 
     private static final Gauge STATS = Gauge.build()
             .name("memcached_stats")
-            .help("get global stats")
+            .help("Memcached global stats (ex: total_items, get_misses,..etc.)")
             .labelNames("cluster", "bucket", "instance", "name")
             .register();
 
     private static final Gauge STATSITEMS = Gauge.build()
             .name("memcached_items")
-            .help("Get items statistics by slab ID")
+            .help("Memcached slab specific metrics (ex: moves_to_warm, evicted,..etc.)")
             .labelNames("cluster", "bucket", "instance", "slabsizerange", "name")
             .register();
 
