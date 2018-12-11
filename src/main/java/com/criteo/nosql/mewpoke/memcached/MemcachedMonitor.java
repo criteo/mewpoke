@@ -103,6 +103,11 @@ public class MemcachedMonitor implements AutoCloseable {
             final Map<String, String> itemStatsByRange = new HashMap<>();
             itemStats.forEach((slabsStatsByIds, statValue) -> {
                 List<String> listSlabsStatsByIds = Splitter.on(':').splitToList(slabsStatsByIds);
+
+                // TODO: Remove after tests with rend.
+                // Check that the response is a valid SLAB response
+                if (listSlabsStatsByIds.size() < 2) return;
+
                 final String slabType = listSlabsStatsByIds.get(0);
                 final String slabId = listSlabsStatsByIds.get(1);
                 final Double slabMinSize = minSizeBySlabId.get(slabId);
