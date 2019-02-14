@@ -9,11 +9,11 @@ buildscript {
 }
 
 plugins {
-  id 'org.ajoberstar.grgit' version '2.1.0'
+  id 'org.ajoberstar.grgit' version '3.0.0'
 }
 
 group 'com.criteo.nosql'
-version = grgit.describe()
+version = grgit.describe(tags: true)
 version version
 println "Building version: ${version}"
 
