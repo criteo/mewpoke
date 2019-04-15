@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 
 public class CouchbaseMonitor implements AutoCloseable {
     private static Logger logger = LoggerFactory.getLogger(CouchbaseMonitor.class);
+    private static AtomicReference<CouchbaseEnvironment> couchbaseEnv = new AtomicReference<>(null);
 
     private final String serviceName;
 
@@ -134,7 +135,7 @@ public class CouchbaseMonitor implements AutoCloseable {
         CouchbaseCluster client = null;
         Bucket bucket = null;
         try {
-            final CouchbaseEnvironment env = DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build();
+            final CouchbaseEnvironment env = couchbaseEnv.updateAndGet(e -> e == null ? DefaultCouchbaseEnvironment.builder().retryStrategy(FailFastRetryStrategy.INSTANCE).build() : e);
             final int httpDirectPort = env.bootstrapHttpDirectPort();
             client = CouchbaseCluster.create(env, endPoints.stream().map(e -> e.getHostString()).collect(Collectors.toList()));
             bucket = client.openBucket(bucketName, bucketpassword);
