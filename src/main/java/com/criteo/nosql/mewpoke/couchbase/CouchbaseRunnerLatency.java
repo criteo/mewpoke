@@ -19,7 +19,6 @@ public class CouchbaseRunnerLatency extends CouchbaseRunnerAbstract {
             final Service service = entry.getKey();
             final Optional<CouchbaseMonitor> monitor = entry.getValue();
             final CouchbaseMetrics metric = this.metrics.get(service);
-            metric.updateDiskLatency(monitor.map(CouchbaseMonitor::collectPersistToDiskLatencies).orElse(Collections.emptyMap()));
             metric.updateAvailability(monitor.map(CouchbaseMonitor::collectAvailability).orElse(Collections.emptyMap()));
         });
     }
