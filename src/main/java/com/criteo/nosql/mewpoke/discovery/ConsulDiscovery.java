@@ -1,8 +1,11 @@
 package com.criteo.nosql.mewpoke.discovery;
 
+import com.couchbase.client.java.CouchbaseCluster;
+import com.couchbase.client.java.cluster.ClusterManager;
+import com.couchbase.client.java.document.json.JsonArray;
+import com.couchbase.client.java.document.json.JsonObject;
 import com.criteo.nosql.mewpoke.config.Config;
 import com.ecwid.consul.v1.ConsistencyMode;
-import com.ecwid.consul.v1.ConsulClient;
 import com.ecwid.consul.v1.QueryParams;
 import com.ecwid.consul.v1.catalog.CatalogClient;
 import com.ecwid.consul.v1.catalog.CatalogConsulClient;
@@ -20,6 +23,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import static java.util.stream.Collectors.toList;
 
@@ -33,12 +37,16 @@ public class ConsulDiscovery implements IDiscovery {
 
     private final String host;
     private final int port;
+    private final String username;
+    private final String password;
     private final int timeout;
     private final QueryParams params;
     private final List<String> tags;
     private final ExecutorService executor;
 
-    public ConsulDiscovery(final Config.ConsulDiscovery consulCfg) {
+    public ConsulDiscovery(final Config.ConsulDiscovery consulCfg, String username, String password) {
+        this.username = username;
+        this.password = password;
         this.host = consulCfg.getHost();
         this.port = consulCfg.getPort();
         this.timeout = consulCfg.getTimeoutInSec();
@@ -49,9 +57,9 @@ public class ConsulDiscovery implements IDiscovery {
 
     private static String getFromTags(final HealthService.Service service, final String prefix) {
         return service.getTags().stream()
-                .filter(tag -> tag.startsWith(prefix))
-                .map(tag -> tag.substring(prefix.length()))
-                .findFirst().orElse("NotDefined");
+            .filter(tag -> tag.startsWith(prefix))
+            .map(tag -> tag.substring(prefix.length()))
+            .findFirst().orElse("NotDefined");
     }
 
     public static String getClusterName(final HealthService.Service service) {
@@ -65,10 +73,10 @@ public class ConsulDiscovery implements IDiscovery {
     private Map<Service, Set<InetSocketAddress>> getServicesNodesByTags(final List<String> tags) {
         final CatalogClient client = new CatalogConsulClient(host, port);
         final List<String> serviceNames =
-                client.getCatalogServices(params).getValue().entrySet().stream()
-                        .filter(entry -> !Collections.disjoint(entry.getValue(), tags))
-                        .map(Map.Entry::getKey)
-                        .collect(toList());
+            client.getCatalogServices(params).getValue().entrySet().stream()
+                .filter(entry -> !Collections.disjoint(entry.getValue(), tags))
+                .map(Map.Entry::getKey)
+                .collect(toList());
         return getServicesNodesByServices(serviceNames);
     }
 
@@ -76,30 +84,61 @@ public class ConsulDiscovery implements IDiscovery {
         final HealthClient client = new HealthConsulClient(host, port);
         final Map<Service, Set<InetSocketAddress>> servicesNodes = new HashMap<>(serviceNames.size());
         for (String serviceName : serviceNames) {
+            final Set<InetSocketAddress> nodesFromConsul = new HashSet<>();
             final Set<InetSocketAddress> nodes = new HashSet<>();
-            final Service[] srv = new Service[]{null};
+            final Service[] srv = new Service[] {null};
             client.getHealthServices(serviceName, false, params).getValue().stream()
-                    // TODO: we ignore nodes when an health check message starts with 'DISCARD'. It allows to ignore spare nodes for couchbase. It's flaky but don't have better; come propose me better.
-                    // TODO: When consul starts, all health checks failed with no message for X seconds. We choose to ignore these nodes. But the test hardcode our convention; come propose me better.
-                    .filter(hsrv -> hsrv.getChecks().stream()
-                            .noneMatch(check -> check.getCheckId().equalsIgnoreCase(MAINTENANCE_MODE)
-                                    || check.getOutput().startsWith("DISCARD:")
-                                    || (check.getCheckId().startsWith("service:couchbase") && check.getOutput().isEmpty())
-                            ))
-                    .forEach(hsrv -> {
-                        logger.debug("{}", hsrv.getNode());
-                        String srvAddr = Strings.isNullOrEmpty(hsrv.getService().getAddress())
-                                       ? hsrv.getNode().getAddress()
-                                       : hsrv.getService().getAddress();
-                        nodes.add(new InetSocketAddress(srvAddr, hsrv.getService().getPort()));
-                        srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()));
-                    });
+                // TODO: we ignore nodes when an health check message starts with 'DISCARD'. It allows to ignore spare nodes for couchbase. It's flaky but don't have better; come propose me better.
+                // TODO: When consul starts, all health checks failed with no message for X seconds. We choose to ignore these nodes. But the test hardcode our convention; come propose me better.
+                .filter(hsrv -> hsrv.getChecks().stream()
+                    .noneMatch(check -> check.getCheckId().equalsIgnoreCase(MAINTENANCE_MODE)
+                        || check.getOutput().startsWith("DISCARD:")
+                        || (check.getCheckId().startsWith("service:couchbase") && check.getOutput().isEmpty())
+                    ))
+                .forEach(hsrv -> {
+                    logger.debug("{}", hsrv.getNode());
+                    String srvAddr = Strings.isNullOrEmpty(hsrv.getService().getAddress())
+                        ? hsrv.getNode().getAddress()
+                        : hsrv.getService().getAddress();
+                    nodesFromConsul.add(new InetSocketAddress(srvAddr, hsrv.getService().getPort()));
+                    srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()));
+                });
+            if (nodesFromConsul.size() > 0) {
+                int port = nodesFromConsul.stream().findFirst().get().getPort();
+                nodes.addAll(getNodesFromCouchbase(nodesFromConsul, port));
+            }
             if (nodes.size() > 0) {
                 logger.info("Found {} nodes for {}", nodes.size(), srv[0]);
                 servicesNodes.put(srv[0], nodes);
             }
         }
         return servicesNodes;
+    }
+
+    private Set<InetSocketAddress> getNodesFromCouchbase(Set<InetSocketAddress> inetAddressConsulNodes, int port) {
+        final Set<InetSocketAddress> nodes = new HashSet<>();
+        CouchbaseCluster couchbaseCluster = null;
+        try {
+            List<String> consulNodes = inetAddressConsulNodes.stream()
+                .map(inetAddressConsulNode -> inetAddressConsulNode.getAddress().getHostAddress()).collect(Collectors.toList());
+            couchbaseCluster = CouchbaseCluster.create(consulNodes);
+            final ClusterManager clusterManager = couchbaseCluster.clusterManager(username, password);
+            final JsonArray clusterNodes = clusterManager.info().raw().getArray("nodes");
+            clusterNodes.forEach(n -> {
+                final String ipaddr = ((JsonObject) n).getString("hostname").split(":")[0];
+                nodes.add(new InetSocketAddress(ipaddr, port));
+            });
+        }
+        catch (Exception e) {
+            logger.error("Could not get Services for {}", host, e);
+            return Collections.emptySet();
+        } finally {
+            if (couchbaseCluster != null) {
+                couchbaseCluster.disconnect();
+            }
+        }
+        
+        return nodes;
     }
 
     /**
