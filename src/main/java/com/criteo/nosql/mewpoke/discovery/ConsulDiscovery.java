@@ -103,9 +103,13 @@ public class ConsulDiscovery implements IDiscovery {
                     nodesFromConsul.add(new InetSocketAddress(srvAddr, hsrv.getService().getPort()));
                     srv[0] = new Service(getClusterName(hsrv.getService()), getBucketName(hsrv.getService()));
                 });
-            if (nodesFromConsul.size() > 0) {
-                int port = nodesFromConsul.stream().findFirst().get().getPort();
-                nodes.addAll(getNodesFromCouchbase(nodesFromConsul, port));
+            if (serviceName.startsWith("couchbase-")) {
+                if (nodesFromConsul.size() > 0) {
+                    int port = nodesFromConsul.stream().findFirst().get().getPort();
+                    nodes.addAll(getNodesFromCouchbase(nodesFromConsul, port));
+                }
+            } else {
+                nodes.addAll(nodesFromConsul);
             }
             if (nodes.size() > 0) {
                 logger.info("Found {} nodes for {}", nodes.size(), srv[0]);
@@ -128,8 +132,7 @@ public class ConsulDiscovery implements IDiscovery {
                 final String ipaddr = ((JsonObject) n).getString("hostname").split(":")[0];
                 nodes.add(new InetSocketAddress(ipaddr, port));
             });
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             logger.error("Could not get Services for {}", host, e);
             return Collections.emptySet();
         } finally {
@@ -137,7 +140,7 @@ public class ConsulDiscovery implements IDiscovery {
                 couchbaseCluster.disconnect();
             }
         }
-        
+
         return nodes;
     }
 
