@@ -74,10 +74,6 @@ public final class Config {
             return port;
         }
 
-        public int getTimeoutInSec() {
-            return timeoutInSec;
-        }
-
         public String getReadConsistency() {
             return readConsistency;
         }

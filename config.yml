@@ -7,7 +7,6 @@ discovery:
 #  consul:
 #    host: consul.service.consul
 #    port: 8500
-#    timeoutInSec: 10
 #    readConsistency: STALE
 #    tags:
 #      - couchbase-memcached
