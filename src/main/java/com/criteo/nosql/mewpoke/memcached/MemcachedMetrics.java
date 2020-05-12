@@ -22,7 +22,7 @@ public class MemcachedMetrics implements AutoCloseable {
             .name("memcached_latency")
             .help("Get and Set latencies")
             .labelNames("cluster", "bucket", "instance", "command")
-            .maxAgeSeconds(5 * 60)
+            .maxAgeSeconds(60)
             .ageBuckets(5)
             .quantile(0.5, 0.05)
             .quantile(0.9, 0.01)
