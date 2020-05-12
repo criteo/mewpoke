@@ -15,17 +15,6 @@ public class CouchbaseMetrics implements AutoCloseable {
             .labelNames("cluster", "bucket", "instance")
             .register();
 
-    private static final Summary LATENCY = Summary.build()
-            .name("couchbase_latency")
-            .help("Disk persistence latency for a set operation")
-            .labelNames("cluster", "bucket", "instance", "command")
-            .maxAgeSeconds(5 * 60)
-            .ageBuckets(5)
-            .quantile(0.5, 0.05)
-            .quantile(0.9, 0.01)
-            .quantile(0.99, 0.001)
-            .register();
-
     private static final Gauge OPERATIONS = Gauge.build()
             .name("couchbase_operations")
             .help("Ongoing rebalance operatio on the cluster")
@@ -78,13 +67,6 @@ public class CouchbaseMetrics implements AutoCloseable {
                 .set(memberships.values().stream().filter(v -> !v.startsWith("active")).count());
     }
 
-    public void updateDiskLatency(final Map<InetSocketAddress, Long> latencies) {
-        latencies.forEach((statname, latency) -> {
-            LATENCY.labels(clusterName, bucketName, statname.getHostName(), "persistToDisk")
-                    .observe(latency);
-        });
-    }
-
     public void updatecollectApiStatsBucket(final Map<InetSocketAddress, Map<String, Double>> nodesStats) {
         nodesStats.forEach((addr, stats) -> {
             stats.forEach((statname, statvalue) -> {
@@ -107,7 +89,6 @@ public class CouchbaseMetrics implements AutoCloseable {
     public void close() {
         // FIXME we should remove only metrics with the labels cluster=clustername, bucket=bucketName
         UP.clear();
-        LATENCY.clear();
         OPERATIONS.clear();
         MEMBERSHIP.clear();
         STATS.clear();
